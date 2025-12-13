@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    container_name: ai_course_builder_redis
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:16
+    container_name: ai_course_builder_db
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    container_name: ai_course_builder_backend
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+      - ./celery_app.py:/app/celery_app.py
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  worker:
+    build: .
+    container_name: ai_course_builder_worker
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./celery_app.py:/app/celery_app.py
+    working_dir: /app
+    command: >
+      celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo
+
+  flower:
+    build: .
+    container_name: ai_course_builder_flower
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./src:/app/src
+      - ./celery_app.py:/app/celery_app.py
+    working_dir: /app
+    command: >
+      celery flower --port=5555 --broker=${REDIS_URL}
+
+volumes:
+  postgres_data:
