@@ -6,6 +6,9 @@ services:
     container_name: ai_course_builder_redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
 
   db:
     image: postgres:16
@@ -16,12 +19,37 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db_migrate:
+    build: .
+    container_name: ai_course_builder_db_migrate
+    depends_on:
+      - db
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    working_dir: /app
+    command: >
+      sh -c "alembic upgrade head"
 
   api:
     build: .
     container_name: ai_course_builder_backend
     depends_on:
       - db
+      - db_migrate
       - redis
     env_file:
       - .env
@@ -50,7 +78,7 @@ services:
       - ./celery_app.py:/app/celery_app.py
     working_dir: /app
     command: >
-      celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo
+      celery -A celery_app.celery_app worker --loglevel=INFO
 
   flower:
     build: .
@@ -70,3 +98,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

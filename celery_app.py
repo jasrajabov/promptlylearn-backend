@@ -6,7 +6,9 @@ CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
 
 celery_app = Celery(
-    "ai_course_builder", broker=CELERY_BROKER_URL, backend=CELERY_RESULT_BACKEND,
+    "ai_course_builder",
+    broker=CELERY_BROKER_URL,
+    backend=CELERY_RESULT_BACKEND,
     include=[
         "src.tasks.generate_quiz",
         "src.tasks.generate_roadmap",

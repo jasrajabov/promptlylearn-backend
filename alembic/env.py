@@ -1,50 +1,54 @@
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
-import sys
-import os
 from alembic import context
+import os
+import sys
 
-# Add your app folder to path
+# Add app root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from src.database import Base, SQLALCHEMY_DATABASE_URL  # your Base and DB URL
-from src.models import *  # import all models so Alembic can detect them
+from src.database import Base
+from src.models import *  # noqa
 
-# Alembic Config object
 config = context.config
 
-# Logging config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# IMPORTANT: set target_metadata to your Base.metadata
 target_metadata = Base.metadata
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set")
 
-# Offline migrations
-def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+
+def run_migrations_offline():
     context.configure(
-        url=url,
+        url=DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
+
     with context.begin_transaction():
         context.run_migrations()
 
 
-# Online migrations
-def run_migrations_online() -> None:
+def run_migrations_online():
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+        {},
+        url=DATABASE_URL,
         poolclass=pool.NullPool,
-        url=SQLALCHEMY_DATABASE_URL,  # override URL
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,  # optional but recommended
+            compare_server_default=True,
+        )
+
         with context.begin_transaction():
             context.run_migrations()
 

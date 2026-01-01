@@ -43,10 +43,6 @@ def save_roadmap(roadmap_id: str, roadmap_data: dict, db: Session, user_id: int)
 def save_course_outline_with_modules(
     course_id: str, db: Session, user_id: int, course_data: dict
 ):
-    """
-    Save a course outline including module titles and lesson titles (placeholders).
-    """
-
     course = db.query(CourseORM).filter_by(id=course_id).first()
 
     course.title = course_data.get("title", course.title)
@@ -55,18 +51,22 @@ def save_course_outline_with_modules(
     db.flush()
     logging.info("Updating course: %s %s", course.id, course.title)
 
-    # Add modules
-    for mod_data in course_data.get("modules", []):
-        module = ModuleORM(id=str(uuid.uuid4()), title=mod_data["title"], course=course)
+    for module_index, mod_data in enumerate(course_data.get("modules", [])):
+        module = ModuleORM(
+            id=str(uuid.uuid4()),
+            title=mod_data["title"],
+            course=course,
+            order_index=module_index,
+        )
         db.add(module)
 
-        # Add lessons with only titles
-        for lesson_data in mod_data.get("lessons", []):
+        for lesson_index, lesson_data in enumerate(mod_data.get("lessons", [])):
             lesson = LessonORM(
                 id=str(uuid.uuid4()),
                 title=lesson_data["title"],
                 module=module,
                 user_id=user_id,
+                order_index=lesson_index,
             )
             db.add(lesson)
 

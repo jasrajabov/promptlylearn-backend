@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, Enum, func
+from sqlalchemy import Column, Boolean, DateTime, Integer, String, Enum, func
 from .database import Base
 from sqlalchemy import ForeignKey, Text, JSON
 import uuid
@@ -44,12 +44,14 @@ class User(Base):
         onupdate=func.now(),
         nullable=True,
     )
+    membership_plan = Column(String, default="free")  # free / premium
+    membership_active = Column(Boolean, default=False)
+    stripe_customer_id = Column(String, nullable=True)
 
 
 # ------------------- COURSE -------------------
 class Course(Base):
     __tablename__ = "courses"
-
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     roadmap_id = Column(
         String, ForeignKey("roadmaps.id", ondelete="CASCADE"), nullable=True, index=True
@@ -58,14 +60,14 @@ class Course(Base):
     title = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     level = Column(String, nullable=False)  # "beginner", "intermediate", "advanced"
-
     # Foreign key to user
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="courses")
-
-    # Relationship: course -> modules
     modules = relationship(
-        "Module", back_populates="course", cascade="all, delete-orphan"
+        "Module",
+        back_populates="course",
+        cascade="all, delete-orphan",
+        order_by="Module.order_index",
     )
     task_id = Column(String, nullable=True)  # Celery task ID for tracking generation
     status = Column(
@@ -91,10 +93,13 @@ class Module(Base):
         String, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True
     )
     title = Column(String, nullable=False)
-
+    order_index = Column(Integer, nullable=False, default=0)
     course = relationship("Course", back_populates="modules")
     lessons = relationship(
-        "Lesson", back_populates="module", cascade="all, delete-orphan"
+        "Lesson",
+        back_populates="module",
+        cascade="all, delete-orphan",
+        order_by="Lesson.order_index",  # ensures lessons come in defined order
     )
     status = Column(
         Enum(Status, name="module_status"), default=Status.NOT_GENERATED, nullable=True
@@ -113,7 +118,6 @@ class Module(Base):
 # ------------------- LESSON -------------------
 class Lesson(Base):
     __tablename__ = "lessons"
-
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     module_id = Column(
@@ -121,6 +125,7 @@ class Lesson(Base):
     )
     title = Column(String, nullable=False)
     content = Column(Text, nullable=True)
+    order_index = Column(Integer, nullable=False, default=0)
     module = relationship("Module", back_populates="lessons")
     status = Column(
         Enum(Status, name="lesson_status"), default=Status.NOT_GENERATED, nullable=True

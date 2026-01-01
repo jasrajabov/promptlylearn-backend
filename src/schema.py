@@ -22,6 +22,10 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
+    stripe_customer_id: str | None = None
+    membership_active: bool = False
+    membership_plan: str = "free"
+
 
 
 class UserLogin(BaseModel):
@@ -33,6 +37,8 @@ class UserOut(BaseSchema):
     id: str
     email: str
     name: str | None = None
+    membership_active: bool
+    membership_plan: str
 
 
 class Token(BaseModel):

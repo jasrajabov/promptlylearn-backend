@@ -3,9 +3,11 @@ import json
 import os
 import redis
 from openai import OpenAI
-from typing import List, Dict, Any
 
-@celery_app.task(name="src.tasks.generate_chat_stream.generate_chat_stream_task", bind=True)
+
+@celery_app.task(
+    name="src.tasks.generate_chat_stream.generate_chat_stream_task", bind=True
+)
 def generate_chat_stream_task(self, session_id: str, user_message: str):
     """
     Celery task to generate a chat reply for a given session and message.
