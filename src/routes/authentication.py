@@ -7,6 +7,7 @@ import os
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from src import models, schema, auth, deps
+from src.utils.credit_helper import ensure_credits_are_valid
 import redis
 
 router = APIRouter(prefix="/authentication", tags=["authentication"])
@@ -18,11 +19,13 @@ frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 @router.post("/signup", response_model=schema.UserOut)
 def signup(user: schema.UserCreate, db: Session = Depends(deps.get_db)):
+    print("Signup request for email:", user.email)
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = auth.hash_password(user.password)
     new_user = models.User(email=user.email, name=user.name, hashed_password=hashed_pw)
+    print("Creating new user:", new_user)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -39,7 +42,6 @@ def login(
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     session_id = str(uuid.uuid4())
-    print("Generated session ID:", session_id)
 
     # store session in redis
     redis_client.set(
@@ -48,10 +50,8 @@ def login(
         ex=60 * 60 * 24 * auth.REFRESH_TOKEN_EXPIRE_DAYS,
     )
 
-    print("Storing session in Redis with key:", f"refresh:{session_id}")
     access_token = auth.create_access_token(str(db_user.id))
     refresh_token = auth.create_refresh_token(str(db_user.id), session_id)
-    print("Generated tokens:", access_token, refresh_token)
 
     response.set_cookie(
         key="refresh_token",
@@ -61,8 +61,7 @@ def login(
         samesite="lax",
         max_age=60 * 60 * 24 * auth.REFRESH_TOKEN_EXPIRE_DAYS,
     )
-    print("Set refresh token cookie")
-    print("Returning tokens")
+    ensure_credits_are_valid(db_user, db)
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -136,6 +135,7 @@ def logout(refresh_token: str | None = Cookie(default=None)):
         except Exception:
             pass
     return {"ok": True}
+
 
 @router.get("/me", response_model=schema.UserOut)
 def get_me(user: models.User = Depends(deps.get_current_user)):

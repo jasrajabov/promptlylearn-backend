@@ -13,6 +13,7 @@ from src.models import Roadmap, RoadmapNode, Status
 from src.models import User
 from src.tasks.generate_roadmap import generate_roadmap_outline
 from sqlalchemy.orm import selectinload
+from src.utils.credit_helper import consume_credits
 
 
 router = APIRouter(prefix="/roadmap", tags=["roadmap"])
@@ -24,8 +25,8 @@ async def generate_roadmap(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
-    print(f"Received request to generate roadmap: {request.roadmap_name}")
-
+    GENERATION_COST = 10
+    consume_credits(current_user, db, GENERATION_COST)
     # 2. Save to DB
     roadmap = Roadmap(
         roadmap_name=request.roadmap_name,
@@ -48,6 +49,7 @@ async def generate_roadmap(
     roadmap.task_id = task.id
     db.commit()
     return {"task_id": task.id, "roadmap_id": roadmap.id, "status": "GENERATING"}
+
 
 @router.get("/get_all_roadmaps", response_model=list[RoadmapResponseSchema])
 async def get_all_roadmaps(
@@ -119,9 +121,6 @@ async def delete_roadmap(
     return {"detail": "Roadmap deleted successfully"}
 
 
-
-
-
 @router.patch("/{roadmap_id}/status", response_model=dict)
 async def update_roadmap_status(
     roadmap_id: str,
@@ -129,7 +128,6 @@ async def update_roadmap_status(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
-    print("Current user ID:", current_user.id)
     status = payload.status
     roadmap = (
         db.query(Roadmap)
@@ -137,7 +135,6 @@ async def update_roadmap_status(
         .first()
     )
     if not roadmap:
-        print("HIT HERE! 1")
         raise HTTPException(status_code=404, detail="Roadmap not found")
 
     roadmap.status = status
@@ -190,9 +187,7 @@ async def update_roadmap_node(
     }
 
 
-@router.post(
-    "/{roadmap_id}", response_model=RoadmapResponseSchema
-)
+@router.post("/{roadmap_id}", response_model=RoadmapResponseSchema)
 async def update_roadmap(
     roadmap_id: str,
     request: RoadmapNodeCourseIdUpdate,
@@ -204,13 +199,8 @@ async def update_roadmap(
         .filter(Roadmap.id == roadmap_id, Roadmap.user_id == current_user.id)
         .first()
     )
-    print("node_id:", request.node_id)
-    print("request.node_id repr:", repr(request.node_id))
-    print("roadmap node ids:", [n.node_id for n in roadmap.nodes])
     if not roadmap:
-        print("Roadmap not found")
         raise HTTPException(status_code=404, detail="Roadmap not found")
-    print(roadmap.nodes)
     node = (
         db.query(RoadmapNode)
         .filter(
@@ -220,7 +210,6 @@ async def update_roadmap(
         .first()
     )
     if not node:
-        print("Node not found")
         raise HTTPException(status_code=404, detail="Node not found")
     node.course_id = request.course_id
     db.commit()

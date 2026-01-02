@@ -9,10 +9,12 @@ import uuid
 from src import deps
 from src import models
 from src import schema
+from src.exceptions import NotEnoughCreditsException
 from src.schema import CourseAllSchema, CourseSchema, LessonSchema, StatusUpdateSchema
 from src.models import Course as CourseORM, Lesson as LessonORM, Status
 from src.tasks.course_outline import generate_course_outline_task
 from src.models import User
+from src.utils.credit_helper import consume_credits
 import redis
 
 from sqlalchemy.orm import joinedload
@@ -31,8 +33,10 @@ frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 def generate_course_outline(
     payload: dict,
     db: Session = Depends(deps.get_db),
-    user: User = Depends(deps.premium_required),
+    user: User = Depends(deps.get_current_user),
 ):
+    GENERATION_COST = 10
+    consume_credits(user, db, GENERATION_COST)
     topic = payload["topic"]
     level = payload["level"]
     roadmap_node_id = payload.get("roadmap_node_id")
@@ -102,6 +106,24 @@ def get_all_courses(
     return res
 
 
+@router.get("/lessons/{lesson_id}", response_model=schema.LessonSchema)
+async def get_lesson(
+    lesson_id: str,
+    db: Session = Depends(deps.get_db),
+    user: User = Depends(deps.get_current_user),
+):
+    print("Fetching lesson for user ID:", user.id)
+    lesson = (
+        db.query(models.Lesson)
+        .filter(models.Lesson.id == lesson_id, models.Lesson.user_id == user.id)
+        .first()
+    )
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    return LessonSchema.model_validate(lesson)
+
+
 @router.get(
     "/{roadmap_id}/{roadmap_node_id}",
     response_model=list[CourseAllSchema],
@@ -154,6 +176,7 @@ async def get_lesson(
     db: Session = Depends(deps.get_db),
     user: User = Depends(deps.get_current_user),
 ):
+    print("Fetching lesson for user ID:", user.id)
     lesson = (
         db.query(models.Lesson)
         .filter(models.Lesson.id == lesson_id, models.Lesson.user_id == user.id)
@@ -293,6 +316,16 @@ async def generate_lesson_markdown_stream(
     if not user:
         raise HTTPException(
             status_code=401, detail="Invalid authentication credentials"
+        )
+
+    GENERATION_COST = 20
+    try:
+        consume_credits(user, db, GENERATION_COST)
+    except NotEnoughCreditsException:
+        raise HTTPException(
+            status_code=402,
+            detail="Not enough credits. Upgrade to premium or wait for reset.",
+            headers={"X-Error-Type": "NotEnoughCreditsException"},
         )
 
     lesson = db.query(LessonORM).filter_by(id=lesson_id).first()

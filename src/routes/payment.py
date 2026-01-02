@@ -7,7 +7,6 @@ from src.models import User
 from sqlalchemy.orm import Session
 from fastapi import Request
 import os
-from datetime import datetime
 
 
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -15,6 +14,7 @@ WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 router = APIRouter(prefix="/payment", tags=["payment"])
 
 PRICE_ID = "price_1Shl43LBs0XeqslSCEv5hxHW"  # your Stripe price ID
+
 
 @router.post("/create-subscription")
 def create_subscription(
@@ -37,14 +37,11 @@ def create_subscription(
         expand=["latest_invoice.confirmation_secret"],  # 👈 singular
     )
     confirmation_secret = subscription.latest_invoice.confirmation_secret
-    client_secret = confirmation_secret.get('client_secret')
-
-
+    client_secret = confirmation_secret.get("client_secret")
 
     if not client_secret:
         raise HTTPException(
-            status_code=400,
-            detail="No client secret found on the latest invoice."
+            status_code=400, detail="No client secret found on the latest invoice."
         )
     print("Created subscription:", subscription.id)
     print("Client secret:", client_secret)
@@ -53,8 +50,9 @@ def create_subscription(
     return {
         "subscription_id": subscription.id,
         "client_secret": client_secret,
-        "amount_due": subscription.latest_invoice.amount_due
+        "amount_due": subscription.latest_invoice.amount_due,
     }
+
 
 @router.post("/stripe-webhook")
 async def stripe_webhook(request: Request, db: Session = Depends(deps.get_db)):

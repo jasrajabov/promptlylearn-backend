@@ -1,8 +1,8 @@
-"""initial schema
+"""init
 
-Revision ID: 9f3901915823
+Revision ID: 3678d5612fd8
 Revises:
-Create Date: 2025-12-23 02:55:42.524503
+Create Date: 2026-01-01 18:15:44.768760
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "9f3901915823"
+revision: str = "3678d5612fd8"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,6 +28,11 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=True),
         sa.Column("email", sa.String(), nullable=False),
         sa.Column("hashed_password", sa.String(), nullable=False),
+        sa.Column("membership_plan", sa.String(), nullable=True),
+        sa.Column("membership_active", sa.Boolean(), nullable=True),
+        sa.Column("stripe_customer_id", sa.String(), nullable=True),
+        sa.Column("credits", sa.Integer(), nullable=True),
+        sa.Column("credits_reset_at", sa.DateTime(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -40,9 +45,6 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=True,
         ),
-        sa.Column("membership_plan", sa.String(), nullable=True),
-        sa.Column("membership_active", sa.Boolean(), nullable=True),
-        sa.Column("stripe_customer_id", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)

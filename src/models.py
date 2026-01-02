@@ -17,6 +17,8 @@ class Status(enum.Enum):
 
 
 # --- SQLAlchemy models ---
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -35,18 +37,19 @@ class User(Base):
         "Roadmap", back_populates="user", cascade="all, delete-orphan"
     )
 
-    created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=True
-    )
+    membership_plan = Column(String, default="free")  # free / premium
+    membership_active = Column(Boolean, default=False)
+    stripe_customer_id = Column(String, nullable=True)
+
+    credits = Column(Integer, default=100)
+    credits_reset_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=True,
     )
-    membership_plan = Column(String, default="free")  # free / premium
-    membership_active = Column(Boolean, default=False)
-    stripe_customer_id = Column(String, nullable=True)
 
 
 # ------------------- COURSE -------------------

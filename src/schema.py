@@ -27,7 +27,6 @@ class UserCreate(BaseModel):
     membership_plan: str = "free"
 
 
-
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
@@ -39,6 +38,8 @@ class UserOut(BaseSchema):
     name: str | None = None
     membership_active: bool
     membership_plan: str
+    credits: int
+    credits_reset_at: datetime | None = None
 
 
 class Token(BaseModel):
