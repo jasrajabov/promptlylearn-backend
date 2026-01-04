@@ -2,6 +2,8 @@ from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import List, Literal, Union
+
+from src.models import MembershipStatus
 from .enums import Language
 
 
@@ -22,9 +24,15 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
+    personal_info: dict | None = None
     stripe_customer_id: str | None = None
-    membership_active: bool = False
+    membership_status: MembershipStatus = MembershipStatus.INACTIVE
     membership_plan: str = "free"
+
+class UserUpdate(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    personal_info: dict | None = None
 
 
 class UserLogin(BaseModel):
@@ -36,8 +44,10 @@ class UserOut(BaseSchema):
     id: str
     email: str
     name: str | None = None
-    membership_active: bool
+    membership_status: MembershipStatus
+    personal_info: dict | None = None   
     membership_plan: str
+    membership_active_until: datetime | None = None
     credits: int
     credits_reset_at: datetime | None = None
 

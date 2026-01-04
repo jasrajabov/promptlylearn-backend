@@ -19,13 +19,12 @@ frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 @router.post("/signup", response_model=schema.UserOut)
 def signup(user: schema.UserCreate, db: Session = Depends(deps.get_db)):
-    print("Signup request for email:", user.email)
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = auth.hash_password(user.password)
-    new_user = models.User(email=user.email, name=user.name, hashed_password=hashed_pw)
-    print("Creating new user:", new_user)
+    personal_info = user.personal_info if hasattr(user, 'personal_info') else None
+    new_user = models.User(email=user.email, name=user.name, hashed_password=hashed_pw, personal_info=personal_info)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -37,7 +36,6 @@ def login(
     user: schema.UserLogin, response: Response, db: Session = Depends(deps.get_db)
 ):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    print("DB User:", db_user)
     if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -62,6 +60,7 @@ def login(
         max_age=60 * 60 * 24 * auth.REFRESH_TOKEN_EXPIRE_DAYS,
     )
     ensure_credits_are_valid(db_user, db)
+
     return {
         "access_token": access_token,
         "token_type": "bearer",

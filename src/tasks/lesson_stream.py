@@ -64,7 +64,7 @@ If expected output is present, add it as a code block with the language "text".
 
         # Save lesson content
         lesson.content = markdown_buffer
-        lesson.status = Status.COMPLETED
+        lesson.status = Status.IN_PROGRESS
         if module and module.status == Status.NOT_GENERATED:
             module.status = Status.IN_PROGRESS
         if course and course.status == Status.NOT_GENERATED:

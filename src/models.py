@@ -15,6 +15,11 @@ class Status(enum.Enum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
 
+class MembershipStatus(enum.Enum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    CANCELED = "CANCELED"
+
 
 # --- SQLAlchemy models ---
 
@@ -26,6 +31,7 @@ class User(Base):
     name = Column(String, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    personal_info = Column(JSON, nullable=True)
 
     # Relationship: a user can have many courses
     courses = relationship(
@@ -38,7 +44,8 @@ class User(Base):
     )
 
     membership_plan = Column(String, default="free")  # free / premium
-    membership_active = Column(Boolean, default=False)
+    membership_status = Column(Enum(MembershipStatus), default=MembershipStatus.INACTIVE)
+    membership_active_until = Column(DateTime, nullable=True)
     stripe_customer_id = Column(String, nullable=True)
 
     credits = Column(Integer, default=100)
