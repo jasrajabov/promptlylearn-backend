@@ -18,7 +18,7 @@ redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0
     name="src.tasks.lesson_stream.generate_lesson_markdown_stream_task", bind=True
 )
 def generate_lesson_markdown_stream_task(
-    self, lesson_id, module_id, course_id, stream_id
+    self, lesson_id, module_id, course_id, stream_id, custom_prompt: str | None = None
 ):
     """Background Celery task that streams lesson markdown tokens to Redis."""
     db = SessionLocal()
@@ -36,17 +36,19 @@ def generate_lesson_markdown_stream_task(
         markdown_buffer = ""
 
         stream = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             messages=[
                 {
                     "role": "user",
                     "content": f"""
-Expand this lesson into detailed content. Be as comprehensive as possible.
-Include explanations, examples, and expected outputs.
+Expand this lesson into detailed content. 
+Be as comprehensive as possible.
+Include explanations, examples, and expected outputs when relevant.
 Lesson Title: {lesson.title}. This lesson is part of the course: {course.title}.
 Markdown only, no JSON.
-Markdown should have headings, code blocks, and text.
+Markdown can only have headings, links, code blocks, and text.
 If expected output is present, add it as a code block with the language "text".
+Additional instructions: {custom_prompt if custom_prompt else "None"}.
 """,
                 }
             ],

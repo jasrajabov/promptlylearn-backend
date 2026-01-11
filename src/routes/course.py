@@ -31,16 +31,17 @@ frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 @router.post("/generate-course-outline")
 def generate_course_outline(
-    payload: dict,
+    payload: schema.GenerateCourseRequest,
     db: Session = Depends(deps.get_db),
     user: User = Depends(deps.get_current_user),
 ):
     GENERATION_COST = 10
     consume_credits(user, db, GENERATION_COST)
-    topic = payload["topic"]
-    level = payload["level"]
-    roadmap_node_id = payload.get("roadmap_node_id")
-    roadmap_id = payload.get("roadmap_id")
+    topic = payload.topic
+    level = payload.level
+    roadmap_node_id = payload.roadmap_node_id
+    roadmap_id = payload.roadmap_id
+    custom_prompt = payload.custom_prompt
 
     # 1. Create empty course entry
     course_id = str(uuid.uuid4())
@@ -66,6 +67,7 @@ def generate_course_outline(
         user_id=user.id,
         roadmap_node_id=roadmap_node_id,
         course_id=course_id,
+        custom_prompt=custom_prompt,
     )
 
     # 3. Save task_id to DB
@@ -166,6 +168,81 @@ async def get_course(
     )
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
+
+    return CourseSchema.model_validate(course)
+
+
+@router.put("/{course_id}")
+async def update_course(
+    course_id: str,
+    payload: schema.CourseSchema,
+    db: Session = Depends(deps.get_db),
+    user: User = Depends(deps.get_current_user),
+):
+    course = (
+        db.query(models.Course)
+        .options(joinedload(models.Course.modules).joinedload(models.Module.lessons))
+        .filter(models.Course.id == course_id, models.Course.user_id == user.id)
+        .first()
+    )
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # update course scalars
+    course.title = payload.title
+    course.description = payload.description
+    course.level = payload.level
+    course.status = payload.status
+
+    # index existing modules by id for quick lookup
+    existing_modules = {m.id: m for m in course.modules}
+
+    for mod_index, mod_payload in enumerate(payload.modules or []):
+        mod_id = getattr(mod_payload, "id", None) or (
+            mod_payload.get("id") if isinstance(mod_payload, dict) else None
+        )
+        if mod_id and mod_id in existing_modules:
+            module = existing_modules[mod_id]
+            module.status = getattr(mod_payload, "status", module.status)
+        else:
+            module = models.Module(
+                id=mod_id or str(uuid.uuid4()),
+                title=getattr(mod_payload, "title", None) or mod_payload.get("title"),
+                course=course,
+                order_index=mod_index,
+                status=getattr(mod_payload, "status", None) or None,
+            )
+            db.add(module)
+
+        # index existing lessons for this module
+        existing_lessons = {l.id: l for l in getattr(module, "lessons", [])}
+
+        for lesson_index, lesson_payload in enumerate(
+            getattr(mod_payload, "lessons", []) or []
+        ):
+            lesson_id = getattr(lesson_payload, "id", None) or (
+                lesson_payload.get("id") if isinstance(lesson_payload, dict) else None
+            )
+            if lesson_id and lesson_id in existing_lessons:
+                lesson = existing_lessons[lesson_id]
+                lesson.order_index = lesson_index
+                lesson.status = getattr(lesson_payload, "status", lesson.status)
+            else:
+                lesson = models.Lesson(
+                    id=lesson_id or str(uuid.uuid4()),
+                    title=getattr(lesson_payload, "title", None)
+                    or lesson_payload.get("title"),
+                    module=module,
+                    user_id=user.id,
+                    order_index=lesson_index,
+                    status=getattr(lesson_payload, "status", None) or None,
+                    content=getattr(lesson_payload, "content", None)
+                    or lesson_payload.get("content"),
+                )
+                db.add(lesson)
+
+    db.commit()
+    db.refresh(course)
 
     return CourseSchema.model_validate(course)
 
@@ -311,6 +388,7 @@ async def generate_lesson_markdown_stream(
     course_id = body.get("course_id")
     module_id = body.get("module_id")
     lesson_id = body.get("lesson_id")
+    custom_prompt = body.get("custom_prompt")
 
     user = deps.get_current_user(token=token, db=db)
     if not user:
@@ -339,7 +417,7 @@ async def generate_lesson_markdown_stream(
 
     # Launch background task
     generate_lesson_markdown_stream_task.delay(
-        lesson_id, module_id, course_id, stream_id
+        lesson_id, module_id, course_id, stream_id, custom_prompt
     )
 
     # Redis subscriber generator

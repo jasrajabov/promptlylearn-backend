@@ -8,7 +8,9 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from src import models, schema, auth, deps
 from src.utils.credit_helper import ensure_credits_are_valid
+from src.utils.email_service import send_welcome_email
 import redis
+import logging
 
 router = APIRouter(prefix="/authentication", tags=["authentication"])
 
@@ -16,18 +18,28 @@ redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
 redis_client = redis.Redis.from_url(redis_url)
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+logger = logging.getLogger(__name__)
 
-@router.post("/signup", response_model=schema.UserOut)
-def signup(user: schema.UserCreate, db: Session = Depends(deps.get_db)):
+
+@router.post("/signup", response_model=schema.UserDetailResponse)
+async def signup(user: schema.UserCreate, db: Session = Depends(deps.get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = auth.hash_password(user.password)
-    personal_info = user.personal_info if hasattr(user, 'personal_info') else None
-    new_user = models.User(email=user.email, name=user.name, hashed_password=hashed_pw, personal_info=personal_info)
+    personal_info = user.personal_info if hasattr(user, "personal_info") else None
+    new_user = models.User(
+        email=user.email,
+        name=user.name,
+        hashed_password=hashed_pw,
+        personal_info=personal_info,
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    email_result = await send_welcome_email(user.email, user.name)
+    if not email_result["success"]:
+        print(f"Failed to send welcome email: {email_result['message']}")
     return new_user
 
 
@@ -50,7 +62,7 @@ def login(
 
     access_token = auth.create_access_token(str(db_user.id))
     refresh_token = auth.create_refresh_token(str(db_user.id), session_id)
-
+    print("db_user", db_user.role)
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -65,7 +77,7 @@ def login(
         "access_token": access_token,
         "token_type": "bearer",
         "expires_in": auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "user": schema.UserOut.from_orm(db_user),
+        "user": schema.UserDetailResponse.from_orm(db_user),
     }
 
 
@@ -136,6 +148,6 @@ def logout(refresh_token: str | None = Cookie(default=None)):
     return {"ok": True}
 
 
-@router.get("/me", response_model=schema.UserOut)
+@router.get("/me", response_model=schema.UserDetailResponse)
 def get_me(user: models.User = Depends(deps.get_current_user)):
     return user

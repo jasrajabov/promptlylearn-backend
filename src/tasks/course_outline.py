@@ -30,30 +30,45 @@ def generate_course_outline_task(
     roadmap_id: str | None = None,
     roadmap_node_id: str | None = None,
     course_id: str | None = None,
+    custom_prompt: str | None = None,
 ) -> CourseSchema:
     try:
         session = SessionLocal()
+        custom_section = (
+            f"\n\n**CUSTOM REQUIREMENTS:**\n{custom_prompt}" if custom_prompt else ""
+        )
 
-        # 3️⃣ Build prompt for OpenAI
-        prompt = f"""
-        Generate a detailed course outline about "{topic} for level {level}".
-        Include all skills needed and as many modules as required.
-        Provide only JSON in this format:
+        prompt = f"""Create a comprehensive course outline as an expert curriculum designer.
+        **TOPIC:** {topic}
+        **LEVEL:** {level.capitalize()}{custom_section}
+
+        **REQUIREMENTS:**
+        • Design complete learning path covering all essential skills
+        • Structure with logical progression (foundational → advanced)
+        • Include 5-12 modules with 3-8 lessons each
+        • Align difficulty with {level} level
+        • {level.capitalize()} means: {"no prior knowledge assumed, focus on fundamentals" if level == "beginner" else "build on foundations, practical applications" if level == "intermediate" else "sophisticated concepts, best practices, real-world scenarios"}
+
+        **OUTPUT:** Valid JSON only (no markdown/code blocks):
+
         {{
-          "title": "Course Title",
-          "description": "Course Description",
-          "modules": [
+        "title": "Specific course title",
+        "description": "2-3 sentences: what students learn and achieve",
+        "modules": [
             {{
-              "title": "Module Title",
-              "lessons": [{{"title": "Lesson Title"}}]
+            "title": "Module title",
+            "lessons": [
+                {{"title": "Specific lesson topic"}},
+                {{"title": "Specific lesson topic"}}
+            ]
             }}
-          ],
-          "fullyGenerated": false
+        ]
         }}
-        """
+
+        Ensure: clear titles, logical flow, comprehensive {level}-level coverage."""
+
         print("Generating course outline with prompt:", prompt)
 
-        # 4️⃣ Call OpenAI
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[

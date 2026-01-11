@@ -27,10 +27,12 @@ async def generate_roadmap(
 ):
     GENERATION_COST = 10
     consume_credits(current_user, db, GENERATION_COST)
-    # 2. Save to DB
+    roadmap_name = request.roadmap_name.strip()
+    custom_prompt = request.custom_prompt.strip() if request.custom_prompt else None
+
     roadmap = Roadmap(
-        roadmap_name=request.roadmap_name,
-        description=f"AI-generated roadmap for {request.roadmap_name}",
+        roadmap_name=roadmap_name,
+        description=f"AI-generated roadmap for {roadmap_name}",
         user_id=current_user.id,
         nodes_json=None,
         edges_json=None,
@@ -45,6 +47,7 @@ async def generate_roadmap(
         roadmap_name=request.roadmap_name,
         roadmap_id=roadmap.id,
         user_id=current_user.id,
+        custom_prompt=custom_prompt,
     )
     roadmap.task_id = task.id
     db.commit()

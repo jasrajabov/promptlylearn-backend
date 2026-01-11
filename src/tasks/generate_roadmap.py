@@ -17,70 +17,69 @@ db = SessionLocal()
 
 @celery_app.task(name="src.tasks.generate_roadmap.generate_roadmap_outline", bind=True)
 def generate_roadmap_outline(
-    self, roadmap_name: str, roadmap_id: str, user_id: str
+    self,
+    roadmap_name: str,
+    roadmap_id: str,
+    user_id: str,
+    custom_prompt: str | None = None,
 ) -> RoadmapResponseSchema:
     """
     Generate a structured learning roadmap for a career or skill path.
     Supports optional branching paths (e.g., Frontend vs Backend).
     """
-    prompt = f"""
-    You are an expert curriculum architect. Think of it as designing a comprehensive learning roadmap for someone to follow for career growth.
-    Create a detailed career roadmap for the path "{roadmap_name}".
+    custom_section = (
+        f"\n**CUSTOM REQUIREMENTS:** {custom_prompt}" if custom_prompt else ""
+    )
 
-    General Rules:
-    - Each node represents a course or learning milestone.
-    - Include 6–12 nodes total.
-    - 2-3 sentences of detailed description
-    - You may create branching paths (for example: Frontend vs Backend, Core vs Advanced, etc.)
-    - You can get detailed, but keep it high-level (no individual lessons).
-    - Each node must include:
-        - id (string)
-        - label (course or milestone name)
-        - description (2–3 sentences)
-        - type:  "core" | "optional" | "project" | "prerequisite" | "certification"| "tooling" |"soft-skill" | "portfolio" | "specialization" | "capstone"
-        - order_index (integer starting from 1)
-        - optional field: "branch" (string, if the node belongs to a branch such as "Frontend" or "Backend")
+    prompt = f"""Design a comprehensive career learning roadmap as an expert curriculum architect.
 
-    Edges:
-    - Connect nodes in a logical learning order using source → target IDs.
-    - Branches should still connect to a shared foundation (e.g., all start from “Introduction”).
-    - When branches merge, create edges that reconnect to shared advanced nodes.
+**ROADMAP:** {roadmap_name}{custom_section}
 
-    Output Format:
-    Return ONLY valid JSON following this schema exactly (no markdown, no explanations):
+**SPECIFICATIONS:**
+• 8-15 nodes: prerequisites (1-2) → core skills (4-6) → specializations (2-4) → capstone/portfolio (1-2)
+• Node types: prerequisite, core, tooling, specialization, project, portfolio, certification, soft-skill, capstone
+• Include meaningful branching for career specializations when relevant
+• Each node: unique string ID, specific label, 2-3 sentence description (what + why), type, order_index
+• Optional: branch field for specialization paths (e.g., "Frontend", "Backend")
 
+**EDGES:**
+• Connect in logical learning order: source → target (string IDs)
+• All branches start from shared foundation
+• Branches can reconverge to advanced shared nodes
+• Every node except first needs incoming edge(s)
+
+**OUTPUT:** Valid JSON only (no markdown/explanations):
+
+{{
+  "roadmap_name": "{roadmap_name}",
+  "description": "3-4 sentences: what's taught, skills gained, career outcomes",
+  "nodes": [
     {{
-        "roadmap_name": "{roadmap_name}",
-        "description": "Sample description of the roadmap. This roadmap covers essential skills and knowledge for {roadmap_name}. Possible career paths and specializations are...",
-        "nodes": [
-            {{
-                "node_id": "1",
-                "label": "Introduction to {roadmap_name}",
-                "description": "Overview of the career path, tools, and goals.",
-                "type": "core",
-                "order_index": 1
-            }},
-            {{
-                "node_id": "2",
-                "label": "Core Fundamentals",
-                "description": "Learn the core principles and key technologies used in {roadmap_name}.",
-                "type": "core",
-                "order_index": 2
-            }}
-            ...
-        ],
-        "edges": [
-            {{ "source": "1", "target": "2" }},
-            ...
-        ]
+      "node_id": "1",
+      "label": "Specific title",
+      "description": "What's covered and why it matters. Key concepts/technologies.",
+      "type": "prerequisite",
+      "order_index": 1
+    }},
+    {{
+      "node_id": "2",
+      "label": "Next milestone",
+      "description": "Learning content and real-world relevance.",
+      "type": "core",
+      "order_index": 2
     }}
+  ],
+  "edges": [
+    {{"source": "1", "target": "2"}}
+  ]
+}}
 
-    Ensure:
-    - All IDs are strings.
-    - JSON is syntactically valid and parsable.
-    - Include meaningful branching when relevant.
-    - DO NOT include any text outside the JSON.
-    """
+**ENSURE:**
+✓ Compelling roadmap description
+✓ Specific labels (not generic)
+✓ Meaningful branching structure
+✓ Valid, parsable JSON
+✓ All edges properly connected"""
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",

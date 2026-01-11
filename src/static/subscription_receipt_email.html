@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <!-- Main Container -->
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    
+                    <!-- Header with Logo -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); padding: 40px 30px; text-align: center;">
+                            <img src="cid:logo" alt="PromptlyLearn" style="max-width: 150px; height: auto; margin-bottom: 20px;">
+                            <h1 style="color: #14b8a6; margin: 0; font-size: 28px; font-weight: 600;">Payment Receipt</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <h2 style="color: #000000; margin: 0 0 20px 0; font-size: 24px;">Thank you, {user_name}! 🎉</h2>
+                            
+                            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+                                Your subscription payment has been successfully processed. Welcome to <strong>PromptlyLearn Premium</strong>!
+                            </p>
+                            
+                            <!-- Receipt Details -->
+                            <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 25px; margin: 0 0 30px 0;">
+                                <h3 style="color: #000000; margin: 0 0 20px 0; font-size: 18px; border-bottom: 2px solid #14b8a6; padding-bottom: 10px;">Receipt Details</h3>
+                                
+                                <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+                                    <tr>
+                                        <td style="color: #666666; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+                                            <strong>Invoice Number:</strong>
+                                        </td>
+                                        <td style="color: #333333; font-size: 14px; padding: 8px 0; text-align: right; border-bottom: 1px solid #e9ecef;">
+                                            {invoice_number}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #666666; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+                                            <strong>Date:</strong>
+                                        </td>
+                                        <td style="color: #333333; font-size: 14px; padding: 8px 0; text-align: right; border-bottom: 1px solid #e9ecef;">
+                                            {payment_date}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #666666; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+                                            <strong>Subscription:</strong>
+                                        </td>
+                                        <td style="color: #333333; font-size: 14px; padding: 8px 0; text-align: right; border-bottom: 1px solid #e9ecef;">
+                                            PromptlyLearn Premium
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #666666; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+                                            <strong>Billing Period:</strong>
+                                        </td>
+                                        <td style="color: #333333; font-size: 14px; padding: 8px 0; text-align: right; border-bottom: 1px solid #e9ecef;">
+                                            {billing_period}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #000000; font-size: 16px; padding: 15px 0 8px 0; font-weight: 600;">
+                                            <strong>Amount Paid:</strong>
+                                        </td>
+                                        <td style="color: #14b8a6; font-size: 18px; padding: 15px 0 8px 0; text-align: right; font-weight: 700;">
+                                            {amount}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <!-- Premium Features -->
+                            <div style="background-color: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 0 0 30px 0; border-radius: 4px;">
+                                <h3 style="color: #000000; margin: 0 0 15px 0; font-size: 18px;">Your Premium Benefits:</h3>
+                                <ul style="color: #333333; font-size: 15px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                                    <li>Unlimited AI-generated courses</li>
+                                    <li>Advanced customization options</li>
+                                    <li>Priority customer support</li>
+                                    <li>Early access to new features</li>
+                                    <li>Export courses in multiple formats</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- CTA Buttons -->
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td align="center" style="padding: 20px 0;">
+                                        <table cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="padding-right: 10px;">
+                                                    <a href="{app_url}" style="background-color: #14b8a6; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 15px; font-weight: 600; display: inline-block; box-shadow: 0 4px 6px rgba(20, 184, 166, 0.3);">
+                                                        Learn Now
+                                                    </a>
+                                                </td>
+                                                <td style="padding-left: 10px;">
+                                                    <a href="{invoice_url}" style="background-color: #f8f9fa; color: #333333; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 15px; font-weight: 600; display: inline-block; border: 1px solid #dee2e6;">
+                                                        View Invoice
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="color: #666666; font-size: 13px; line-height: 1.6; margin: 30px 0 0 0; padding: 15px; background-color: #f8f9fa; border-radius: 4px;">
+                                <strong>Note:</strong> You can manage your subscription, update payment methods, or view past invoices anytime from your account settings.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #000000; padding: 30px; text-align: center;">
+                            <p style="color: #14b8a6; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">
+                                PromptlyLearn
+                            </p>
+                            <p style="color: #999999; margin: 0; font-size: 12px; line-height: 1.5;">
+                                © 2026 PromptlyLearn. All rights reserved.
+                            </p>
+                            <p style="color: #666666; margin: 10px 0 0 0; font-size: 11px;">
+                                This is a receipt for your subscription payment.
+                            </p>
+                            <p style="color: #666666; margin: 5px 0 0 0; font-size: 11px;">
+                                Questions? Contact me at jasurbek@promptlylearn.app
+                            </p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

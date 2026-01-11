@@ -1,6 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.routes import authentication, chat, course, roadmap, tasks, quiz, payment, user
+from src.routes import (
+    authentication,
+    chat,
+    course,
+    roadmap,
+    tasks,
+    quiz,
+    payment,
+    user,
+    admin,
+)
 
 
 app = FastAPI()
@@ -21,6 +31,7 @@ app.include_router(tasks.router)
 app.include_router(course.router)
 app.include_router(roadmap.router)
 app.include_router(payment.router)
+app.include_router(admin.router)
 
 
 @app.on_event("startup")

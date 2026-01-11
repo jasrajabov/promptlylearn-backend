@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <!-- Main Container -->
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    
+                    <!-- Header with Logo -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); padding: 40px 30px; text-align: center;">
+                            <img src="cid:logo" alt="PromptlyLearn" style="max-width: 150px; height: auto; margin-bottom: 20px;">
+                            <h1 style="color: #14b8a6; margin: 0; font-size: 28px; font-weight: 600;">Subscription Cancelled</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <h2 style="color: #000000; margin: 0 0 20px 0; font-size: 24px;">Hi {user_name},</h2>
+                            
+                            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                                We've received your request to cancel your <strong>PromptlyLearn Premium</strong> subscription.
+                            </p>
+                            
+                            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+                                We're sorry to see you go, but we understand that circumstances change.
+                            </p>
+                            
+                            <!-- Access Information -->
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 0 0 30px 0; border-radius: 4px;">
+                                <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">Your Access Continues Until:</h3>
+                                <p style="color: #78350f; font-size: 18px; margin: 0; font-weight: 600;">
+                                    {access_until}
+                                </p>
+                                <p style="color: #78350f; font-size: 14px; margin: 10px 0 0 0; line-height: 1.6;">
+                                    You can continue using all Premium features until this date. After that, your account will automatically switch to the free plan.
+                                </p>
+                            </div>
+                            
+                            <!-- What Happens Next -->
+                            <div style="background-color: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 0 0 30px 0; border-radius: 4px;">
+                                <h3 style="color: #000000; margin: 0 0 15px 0; font-size: 18px;">What Happens Next:</h3>
+                                <ul style="color: #333333; font-size: 15px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                                    <li>You won't be charged again</li>
+                                    <li>Premium features remain active until {access_until_short}</li>
+                                    <li>After that date, you'll switch to the free plan</li>
+                                    <li>Your courses and data will be preserved</li>
+                                    <li>You can reactivate Premium anytime</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Feedback Section -->
+                            <div style="background-color: #f8f9fa; padding: 25px; border-radius: 6px; margin: 0 0 30px 0;">
+                                <h3 style="color: #000000; margin: 0 0 15px 0; font-size: 18px; text-align: center;">We'd Love Your Feedback</h3>
+                                <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 20px 0; text-align: center;">
+                                    Would you mind sharing why you cancelled? Your feedback helps us improve PromptlyLearn for everyone.
+                                </p>
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td align="center">
+                                            <a href="{app_url}/feedback?reason=cancellation" style="background-color: #6b7280; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-size: 15px; font-weight: 600; display: inline-block;">
+                                                Share Feedback
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <!-- Reactivate Section -->
+                            <div style="text-align: center; padding: 20px 0; margin: 0 0 20px 0;">
+                                <h3 style="color: #000000; margin: 0 0 15px 0; font-size: 18px;">Changed Your Mind?</h3>
+                                <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">
+                                    You can reactivate your Premium subscription at any time.
+                                </p>
+                                <a href="{app_url}/upgrade" style="background-color: #14b8a6; color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-size: 16px; font-weight: 600; display: inline-block; box-shadow: 0 4px 6px rgba(20, 184, 166, 0.3);">
+                                    Reactivate Premium
+                                </a>
+                            </div>
+                            
+                            <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 30px 0 0 0; text-align: center;">
+                                Thank you for being part of the PromptlyLearn community. We hope to see you again soon!
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #000000; padding: 30px; text-align: center;">
+                            <p style="color: #14b8a6; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">
+                                PromptlyLearn
+                            </p>
+                            <p style="color: #999999; margin: 0; font-size: 12px; line-height: 1.5;">
+                                © 2026 PromptlyLearn. All rights reserved.
+                            </p>
+                            <p style="color: #666666; margin: 10px 0 0 0; font-size: 11px;">
+                                This is a confirmation email for your subscription cancellation.
+                            </p>
+                            <p style="color: #666666; margin: 5px 0 0 0; font-size: 11px;">
+                                Questions? Contact me at jasurbek@promptlylearn.app
+                            </p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

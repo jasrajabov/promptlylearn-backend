@@ -7,7 +7,10 @@ FREE_WEEKLY_CREDITS = 100
 
 
 def ensure_credits_are_valid(user: User, db: Session):
-    if user.membership_plan == "premium" and user.membership_status == MembershipStatus.ACTIVE:
+    if (
+        user.membership_plan == "premium"
+        and user.membership_status == MembershipStatus.ACTIVE
+    ):
         return  # premium users don't need resets
 
     now = datetime.utcnow()
@@ -31,9 +34,18 @@ def consume_credits(
 ):
     ensure_credits_are_valid(user, db)
 
-    if (user.membership_plan == "premium" and user.membership_status == MembershipStatus.ACTIVE) or (user.membership_active_until and user.membership_active_until > datetime.utcnow()):
+    if (
+        user.membership_plan == "premium"
+        and user.membership_status == MembershipStatus.ACTIVE
+    ) or (
+        user.membership_active_until
+        and user.membership_active_until > datetime.utcnow()
+    ):
         return  # unlimited
-    elif user.membership_active_until and user.membership_active_until < datetime.utcnow():
+    elif (
+        user.membership_active_until
+        and user.membership_active_until < datetime.utcnow()
+    ):
         raise NotEnoughCreditsException(
             message="Membership has expired. Please purchase a subscription."
         )
@@ -45,13 +57,20 @@ def consume_credits(
     user.credits -= cost
     db.commit()
 
+
 def update_user_subscription_details(
     user: User,
     db: Session,
 ):
-    if user.membership_plan == "premium" and user.membership_status == MembershipStatus.ACTIVE:
+    if (
+        user.membership_plan == "premium"
+        and user.membership_status == MembershipStatus.ACTIVE
+    ):
         return  # already premium
-    if user.membership_plan == "premium" and user.membership_active_until < datetime.utcnow():
+    if (
+        user.membership_plan == "premium"
+        and user.membership_active_until < datetime.utcnow()
+    ):
         user.membership_status = MembershipStatus.INACTIVE
         user.membership_plan = "free"
         db.commit()
