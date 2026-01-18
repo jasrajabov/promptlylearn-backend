@@ -36,7 +36,7 @@ def generate_lesson_markdown_stream_task(
         markdown_buffer = ""
 
         stream = client.chat.completions.create(
-            model="gpt-5-mini",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "user",
@@ -46,7 +46,6 @@ Be as comprehensive as possible.
 Include explanations, examples, and expected outputs when relevant.
 Lesson Title: {lesson.title}. This lesson is part of the course: {course.title}.
 Markdown only, no JSON.
-Markdown can only have headings, links, code blocks, and text.
 If expected output is present, add it as a code block with the language "text".
 Additional instructions: {custom_prompt if custom_prompt else "None"}.
 """,
@@ -60,7 +59,6 @@ Additional instructions: {custom_prompt if custom_prompt else "None"}.
                 delta = event.choices[0].delta
                 token = getattr(delta, "content", None)
                 if token:
-                    print("Streaming token:", token)
                     markdown_buffer += token
                     redis_client.publish(channel, token)
 

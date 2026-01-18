@@ -40,8 +40,11 @@ class User(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)
     personal_info = Column(JSON, nullable=True)
+
+    oauth_provider = Column(String, nullable=True)  # 'google', 'github', etc.
+    oauth_provider_id = Column(String, nullable=True)
 
     # Admin & Status fields
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)

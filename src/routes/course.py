@@ -215,7 +215,9 @@ async def update_course(
             db.add(module)
 
         # index existing lessons for this module
-        existing_lessons = {l.id: l for l in getattr(module, "lessons", [])}
+        existing_lessons = {
+            lesson.id: lesson for lesson in getattr(module, "lessons", [])
+        }
 
         for lesson_index, lesson_payload in enumerate(
             getattr(mod_payload, "lessons", []) or []
@@ -245,24 +247,6 @@ async def update_course(
     db.refresh(course)
 
     return CourseSchema.model_validate(course)
-
-
-@router.get("/lessons/{lesson_id}", response_model=schema.LessonSchema)
-async def get_lesson(
-    lesson_id: str,
-    db: Session = Depends(deps.get_db),
-    user: User = Depends(deps.get_current_user),
-):
-    print("Fetching lesson for user ID:", user.id)
-    lesson = (
-        db.query(models.Lesson)
-        .filter(models.Lesson.id == lesson_id, models.Lesson.user_id == user.id)
-        .first()
-    )
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    return LessonSchema.model_validate(lesson)
 
 
 @router.patch("/lessons/{lesson_id}/status")

@@ -11,6 +11,8 @@ from src.routes import (
     user,
     admin,
 )
+from starlette.middleware.sessions import SessionMiddleware
+import os
 
 
 app = FastAPI()
@@ -21,6 +23,16 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# ADD SESSION MIDDLEWARE FOR OAUTH SUPPORT
+# This must be added AFTER CORS middleware
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY", "your-secret-key-change-in-production"),
+    max_age=3600,  # Session expires after 1 hour (only used during OAuth flow)
+    same_site="lax",
+    https_only=False,  # Set to True in production with HTTPS
 )
 
 app.include_router(user.router)

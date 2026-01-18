@@ -83,22 +83,6 @@ services:
     command: >
       celery -A celery_app.celery_app worker --loglevel=INFO
 
-  flower:
-    build: .
-    container_name: ai_course_builder_flower
-    depends_on:
-      - redis
-    env_file:
-      - .env
-    ports:
-      - "5555:5555"
-    volumes:
-      - ./src:/app/src
-      - ./celery_app.py:/app/celery_app.py
-    working_dir: /app
-    command: >
-      celery flower --port=5555 --broker=${REDIS_URL}
-
 volumes:
   postgres_data:
   redis_data:

@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  db:
+    image: postgres:16
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "
+      gunicorn src.main:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2
+      --threads 2
+      --bind 0.0.0.0:8000
+      "
+
+  worker:
+    build: .
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - .env
+    command: >
+      celery -A celery_app.celery_app
+      worker
+      --loglevel=INFO
+      --concurrency=2
+
+volumes:
+  postgres_data:
+  redis_data:
