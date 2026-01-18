@@ -3,26 +3,61 @@ version: "3.9"
 services:
   redis:
     image: redis:7
-    command: redis-server --appendonly yes
+    container_name: promptlylearn_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
     volumes:
       - redis_data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   db:
     image: postgres:16
+    container_name: promptlylearn_db
     env_file:
       - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Optional: Expose port only if you need external access
+    # ports:
+    #   - "5432:5432"
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: promptlylearn_api
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
     ports:
       - "8000:8000"
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     command: >
       sh -c "
       gunicorn src.main:app
@@ -30,21 +65,75 @@ services:
       -w 2
       --threads 2
       --bind 0.0.0.0:8000
+      --timeout 120
+      --access-logfile -
+      --error-logfile -
       "
 
   worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: promptlylearn_worker
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     env_file:
       - .env
+    networks:
+      - app-network
+    restart: unless-stopped
     command: >
       celery -A celery_app.celery_app
       worker
       --loglevel=INFO
       --concurrency=2
+      --max-tasks-per-child=1000
+
+  # Optional: Celery Beat for scheduled tasks
+  # beat:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: promptlylearn_beat
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     db:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - app-network
+  #   restart: unless-stopped
+  #   command: celery -A celery_app.celery_app beat --loglevel=INFO
+
+  # Optional: Flower for Celery monitoring
+  # flower:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: promptlylearn_flower
+  #   depends_on:
+  #     - redis
+  #     - worker
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "5555:5555"
+  #   networks:
+  #     - app-network
+  #   restart: unless-stopped
+  #   command: celery -A celery_app.celery_app flower --port=5555
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
