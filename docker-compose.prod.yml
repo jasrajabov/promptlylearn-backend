@@ -53,6 +53,8 @@ services:
       - .env
     ports:
       - "8000:8000"
+    volumes:
+      - ./scripts:/app/scripts:ro # Mount scripts folder as read-only
     networks:
       - app-network
     restart: unless-stopped
@@ -86,6 +88,8 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    volumes:
+      - ./scripts:/app/scripts:ro # Mount scripts folder as read-only
     networks:
       - app-network
     restart: unless-stopped
@@ -109,6 +113,8 @@ services:
   #       condition: service_healthy
   #   env_file:
   #     - .env
+  #   volumes:
+  #     - ./scripts:/app/scripts:ro  # Mount scripts folder
   #   networks:
   #     - app-network
   #   restart: unless-stopped
@@ -127,6 +133,8 @@ services:
   #     - .env
   #   ports:
   #     - "5555:5555"
+  #   volumes:
+  #     - ./scripts:/app/scripts:ro  # Mount scripts folder
   #   networks:
   #     - app-network
   #   restart: unless-stopped
