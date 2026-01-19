@@ -45,10 +45,6 @@ app.include_router(roadmap.router)
 app.include_router(payment.router)
 app.include_router(admin.router)
 
-
-@app.on_event("startup")
-def _print_routes():
-    from pprint import pprint
-
-    routes = [(list(r.methods), r.path) for r in app.routes if getattr(r, "path", None)]
-    pprint(routes)
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
