@@ -1,5 +1,13 @@
 import uuid
-from fastapi import APIRouter, Cookie, HTTPException, Response, Request, Depends
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Cookie,
+    HTTPException,
+    Response,
+    Request,
+    Depends,
+)
 from fastapi.responses import RedirectResponse
 from jose import jwt
 from authlib.integrations.starlette_client import OAuth
@@ -124,12 +132,18 @@ async def get_or_create_oauth_user(
 
 
 @router.post("/signup", response_model=schema.UserDetailResponse)
-async def signup(user: schema.UserCreate, db: Session = Depends(deps.get_db)):
+async def signup(
+    user: schema.UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(deps.get_db),
+):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
     hashed_pw = auth.hash_password(user.password)
     personal_info = user.personal_info if hasattr(user, "personal_info") else None
+
     new_user = models.User(
         email=user.email,
         name=user.name,
@@ -139,9 +153,9 @@ async def signup(user: schema.UserCreate, db: Session = Depends(deps.get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    email_result = await send_welcome_email(user.email, user.name)
-    if not email_result["success"]:
-        print(f"Failed to send welcome email: {email_result['message']}")
+
+    background_tasks.add_task(send_welcome_email, user.email, user.name)
+
     return new_user
 
 
