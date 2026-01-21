@@ -1,0 +1,46 @@
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  
+  <defs>
+    <linearGradient id="tealGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Book with AI chip design on the left -->
+  <g transform="translate(100, 100)">
+    <!-- Open book shape -->
+    <path d="M -30 -20 Q -30 -25, -25 -25 L -5 -25 Q 0 -25, 0 -20 L 0 20 Q 0 25, -5 25 L -25 25 Q -30 25, -30 20 Z" 
+          fill="none" 
+          stroke="url(#tealGradient)" 
+          stroke-width="3.5"/>
+    <path d="M 30 -20 Q 30 -25, 25 -25 L 5 -25 Q 0 -25, 0 -20 L 0 20 Q 0 25, 5 25 L 25 25 Q 30 25, 30 20 Z" 
+          fill="none" 
+          stroke="url(#tealGradient)" 
+          stroke-width="3.5"/>
+    
+    <!-- Center binding -->
+    <line x1="0" y1="-25" x2="0" y2="25" stroke="url(#tealGradient)" stroke-width="2"/>
+    
+    <!-- AI circuit nodes on pages -->
+    <circle cx="-15" cy="-10" r="3" fill="#14b8a6"/>
+    <circle cx="-15" cy="0" r="3" fill="#06b6d4"/>
+    <circle cx="-15" cy="10" r="3" fill="#14b8a6"/>
+    
+    <circle cx="15" cy="-10" r="3" fill="#06b6d4"/>
+    <circle cx="15" cy="0" r="3" fill="#14b8a6"/>
+    <circle cx="15" cy="10" r="3" fill="#06b6d4"/>
+    
+    <!-- Connecting lines -->
+    <line x1="-15" y1="-10" x2="-15" y2="0" stroke="#14b8a6" stroke-width="1.5" opacity="0.5"/>
+    <line x1="-15" y1="0" x2="-15" y2="10" stroke="#06b6d4" stroke-width="1.5" opacity="0.5"/>
+    <line x1="15" y1="-10" x2="15" y2="0" stroke="#06b6d4" stroke-width="1.5" opacity="0.5"/>
+    <line x1="15" y1="0" x2="15" y2="10" stroke="#14b8a6" stroke-width="1.5" opacity="0.5"/>
+  </g>
+  
+  <!-- Text with extra bold modern font - perfectly centered with icon and closer -->
+  <text x="150" y="118" font-family="'Montserrat', 'Inter', 'Helvetica Neue', Arial, sans-serif" 
+        font-size="52" font-weight="900" text-anchor="start" fill="#0f172a" letter-spacing="-1.5">
+    PromptlyLearn
+  </text>
+</svg>

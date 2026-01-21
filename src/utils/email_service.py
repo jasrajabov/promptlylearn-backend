@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Constants
 STATIC_DIR = Path("src/static")
-LOGO_PATH = STATIC_DIR / "logo.png"
+LOGO_PATH = STATIC_DIR / "logo.svg"
 WELCOME_TEMPLATE_PATH = STATIC_DIR / "welcome_email.html"
 DELETION_TEMPLATE_PATH = STATIC_DIR / "account_deletion_email.html"
 SUBSCRIPTION_RECEIPT_TEMPLATE_PATH = STATIC_DIR / "subscription_receipt_email.html"
@@ -76,7 +76,7 @@ async def send_email_with_logo(to_email: str, subject: str, html_content: str):
         with open(LOGO_PATH, "rb") as img_file:
             img = MIMEImage(img_file.read())
             img.add_header("Content-ID", "<logo>")
-            img.add_header("Content-Disposition", "inline", filename="logo.png")
+            img.add_header("Content-Disposition", "inline", filename="logo.svg")
             message.attach(img)
     except FileNotFoundError:
         logger.warning(f"Logo file not found at {LOGO_PATH}")
