@@ -5,6 +5,9 @@ from src.schema import GenerateQuizRequest
 from src.tasks.generate_quiz import generate_quiz_questions
 from src.utils.credit_helper import consume_credits
 from src.exceptions import NotEnoughCreditsException
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
@@ -29,6 +32,6 @@ async def generate_quiz(
             lesson_name=req.lesson_name,
         )
     except Exception as e:
-        print(f"Error occurred: {e}")
+        logger.error(f"Error occurred while generating quiz for user {user.id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     return {"task_id": task.id}

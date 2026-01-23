@@ -55,7 +55,6 @@ def generate_quiz_questions(self, lesson_name: str) -> dict:
     try:
         quiz_data = json.loads(quiz_json)
         redis_client.setex(f"quiz:{task_id}", QUIZ_TTL_SECONDS, json.dumps(quiz_data))
-        print(f"[generate_quiz_questions] Quiz stored in Redis for task {task_id}")
         return {"status": "success", "task_id": task_id}
     except json.JSONDecodeError as e:
         raise ValueError(f"Failed to parse quiz JSON: {e}")

@@ -88,11 +88,7 @@ def generate_roadmap_outline(
     )
 
     raw_output = response.choices[0].message.content.strip()
-    print("Raw Roadmap Output:", raw_output)
-
-    # --- parse and validate ---
     json_data = json.loads(raw_output)
-    print("Parsed Roadmap JSON:", json_data)
     saved_roadmap = save_roadmap(roadmap_id, json_data, db, user_id)
 
     return saved_roadmap

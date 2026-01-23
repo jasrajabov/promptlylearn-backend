@@ -41,7 +41,6 @@ def generate_chat_stream_task(self, session_id: str, user_message: str):
 
     # Save final reply keyed by task_id for frontend polling
     result_key = f"chat_result:{self.request.id}"
-    print("result_key:", result_key)
     redis_client.set(result_key, reply)
 
     return {"status": "completed", "reply": reply}

@@ -10,7 +10,6 @@ from datetime import datetime
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants
@@ -19,6 +18,7 @@ LOGO_PATH = STATIC_DIR / "logo.svg"
 WELCOME_TEMPLATE_PATH = STATIC_DIR / "welcome_email.html"
 DELETION_TEMPLATE_PATH = STATIC_DIR / "account_deletion_email.html"
 SUBSCRIPTION_RECEIPT_TEMPLATE_PATH = STATIC_DIR / "subscription_receipt_email.html"
+FORGOT_PASSWORD_TEMPLATE_PATH = STATIC_DIR /  "forgot_password_email.html"
 SUBSCRIPTION_CANCELLATION_TEMPLATE_PATH = (
     STATIC_DIR / "subscription_cancellation_email.html"
 )
@@ -50,39 +50,15 @@ def load_email_template(template_path: Path, **kwargs) -> str:
 
 
 async def send_email_with_logo(to_email: str, subject: str, html_content: str):
-    """
-    Helper function to send an email with the logo attachment.
-
-    Args:
-        to_email: Recipient email address
-        subject: Email subject line
-        html_content: Rendered HTML content
-
-    Returns:
-        Dict with success status and message
-    """
-    # Create message
-    message = MIMEMultipart("related")
-    message["From"] = os.getenv("ZOHO_EMAIL")
-    message["To"] = to_email
-    message["Subject"] = subject
-
-    # Attach HTML content
-    html_part = MIMEText(html_content, "html")
-    message.attach(html_part)
-
-    # Attach logo image
+    """Utility func to send email with logo"""
     try:
-        with open(LOGO_PATH, "rb") as img_file:
-            img = MIMEImage(img_file.read())
-            img.add_header("Content-ID", "<logo>")
-            img.add_header("Content-Disposition", "inline", filename="logo.svg")
-            message.attach(img)
-    except FileNotFoundError:
-        logger.warning(f"Logo file not found at {LOGO_PATH}")
+        message = MIMEMultipart("related")
+        message["From"] = f"PromptlyLearn <{os.getenv('ZOHO_EMAIL')}>"
+        message["To"] = to_email
+        message["Subject"] = subject
 
-    # Send email
-    try:
+        message.attach(MIMEText(html_content, "html"))
+
         await aiosmtplib.send(
             message,
             hostname=os.getenv("ZOHO_SMTP_HOST"),
@@ -91,11 +67,10 @@ async def send_email_with_logo(to_email: str, subject: str, html_content: str):
             password=os.getenv("ZOHO_PASSWORD"),
             start_tls=True,
         )
-        logger.info(f"Email sent to {to_email}")
-        return {"success": True, "message": "Email sent successfully"}
+        return True
     except Exception as e:
-        logger.error(f"Error sending email: {e}")
-        return {"success": False, "message": str(e)}
+        logger.error(f"Failed to send email to {to_email}. {e} ")
+        return False
 
 
 async def send_welcome_email(to_email: str, user_name: str):
@@ -262,3 +237,40 @@ async def send_subscription_cancellation_email(
         return {"success": False, "message": f"Template error: {str(e)}"}
 
     return await send_email_with_logo(to_email, subject, html_content)
+
+
+async def send_password_reset_email(email: str, reset_token: str, user_name: str = None):
+    """
+    Send password reset email using HTML template from static folder.
+    
+    Args:
+        email: User's email address
+        reset_token: The reset token
+        username: User's username (optional)
+    """
+    # Get frontend URL from environment
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    reset_link = f"{frontend_url}/reset-password?token={reset_token}"
+    
+    # Load HTML template from static folder
+    try:
+        html_template = load_email_template(
+            FORGOT_PASSWORD_TEMPLATE_PATH,
+            user_name = user_name, 
+            reset_link=reset_link
+                                            
+                                            )
+    except FileNotFoundError as e:
+        logger.error(f"Failed to load email template: {e}")
+        raise
+    
+    
+    # Send email using your existing function
+    result = await send_email_with_logo(
+        to_email=email,
+        subject="Reset Your Password - NO REPLY",
+        html_content=html_template
+    )
+    
+    logger.info(f"Password reset email sent to {email}: {result}")
+    return result

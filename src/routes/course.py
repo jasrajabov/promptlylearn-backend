@@ -16,10 +16,13 @@ from src.tasks.course_outline import generate_course_outline_task
 from src.models import User
 from src.utils.credit_helper import consume_credits
 import redis
+import logging
 
 from sqlalchemy.orm import joinedload
 
 from src.tasks.lesson_stream import generate_lesson_markdown_stream_task
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/course", tags=["course"])
@@ -82,7 +85,6 @@ def generate_course_outline(
 def get_all_courses(
     db: Session = Depends(deps.get_db), user: User = Depends(deps.get_current_user)
 ):
-    print("Fetching courses for user ID:", user.id)
     courses = db.query(models.Course).filter(models.Course.user_id == user.id).all()
     res = []
     for course in courses:
@@ -103,7 +105,6 @@ def get_all_courses(
                 for course_module in course.modules
             ],
         }
-        print(f"Course ID: {course.id}, Title: {course.title}")
         res.append(course_data)
     return res
 
@@ -114,7 +115,6 @@ async def get_lesson(
     db: Session = Depends(deps.get_db),
     user: User = Depends(deps.get_current_user),
 ):
-    print("Fetching lesson for user ID:", user.id)
     lesson = (
         db.query(models.Lesson)
         .filter(models.Lesson.id == lesson_id, models.Lesson.user_id == user.id)
@@ -145,11 +145,8 @@ def get_courses_by_roadmap(
         )
         .all()
     )
-    print("Roadmap node id:", roadmap_node_id)
-    print("Course roadmap_node_ids:", [c.roadmap_node_id for c in courses])
-
     for course in courses:
-        db.refresh(course)  # ← THIS FIXES STALE STATUS
+        db.refresh(course)
 
     return [CourseAllSchema.model_validate(course) for course in courses]
 
@@ -374,7 +371,7 @@ async def generate_lesson_markdown_stream(
     lesson_id = body.get("lesson_id")
     custom_prompt = body.get("custom_prompt")
 
-    user = deps.get_current_user(token=token, db=db)
+    user: User = deps.get_current_user(token=token, db=db)
     if not user:
         raise HTTPException(
             status_code=401, detail="Invalid authentication credentials"
@@ -400,8 +397,10 @@ async def generate_lesson_markdown_stream(
     channel = f"lesson_stream:{stream_id}"
 
     # Launch background task
+    model = "gpt-5-mini" if user.membership_plan == "premium" else "gpt-4o-mini"
+    logger.info(f"User {user.id} is premium, using gpt-4.1-mini for lesson generation")
     generate_lesson_markdown_stream_task.delay(
-        lesson_id, module_id, course_id, stream_id, custom_prompt
+        model, lesson_id, module_id, course_id, stream_id, custom_prompt
     )
 
     # Redis subscriber generator

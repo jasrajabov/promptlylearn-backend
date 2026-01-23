@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import logging
 
 from src import deps
 from src.schema import (
@@ -15,6 +16,8 @@ from src.tasks.generate_roadmap import generate_roadmap_outline
 from sqlalchemy.orm import selectinload
 from src.utils.credit_helper import consume_credits
 
+# Create logger for this module
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/roadmap", tags=["roadmap"])
 
@@ -25,8 +28,17 @@ async def generate_roadmap(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
+    logger.info(f"User {current_user.id} generating roadmap: {request.roadmap_name}")
+
     GENERATION_COST = 10
-    consume_credits(current_user, db, GENERATION_COST)
+
+    try:
+        consume_credits(current_user, db, GENERATION_COST)
+        logger.debug(f"Credits consumed: {GENERATION_COST} for user {current_user.id}")
+    except Exception as e:
+        logger.error(f"Credit consumption failed for user {current_user.id}: {str(e)}")
+        raise
+
     roadmap_name = request.roadmap_name.strip()
     custom_prompt = request.custom_prompt.strip() if request.custom_prompt else None
 
@@ -43,6 +55,8 @@ async def generate_roadmap(
     db.commit()
     db.refresh(roadmap)
 
+    logger.info(f"Roadmap created with ID: {roadmap.id} for user {current_user.id}")
+
     task = generate_roadmap_outline.delay(
         roadmap_name=request.roadmap_name,
         roadmap_id=roadmap.id,
@@ -51,6 +65,8 @@ async def generate_roadmap(
     )
     roadmap.task_id = task.id
     db.commit()
+
+    logger.info(f"Roadmap generation task started: {task.id} for roadmap {roadmap.id}")
     return {"task_id": task.id, "roadmap_id": roadmap.id, "status": "GENERATING"}
 
 
@@ -59,9 +75,12 @@ async def get_all_roadmaps(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
-    print("Current user ID:", current_user.id)
+    logger.info(f"Fetching all roadmaps for user: {current_user.id}")
+
     roadmaps = db.query(Roadmap).filter(Roadmap.user_id == current_user.id).all()
-    print("Roadmaps found:", len(roadmaps))
+
+    logger.info(f"Found {len(roadmaps)} roadmaps for user {current_user.id}")
+
     return [
         RoadmapResponseSchema(
             id=roadmap.id,
@@ -85,16 +104,22 @@ async def get_generated_roadmap(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
-    print("Current user ID:", current_user.id)
-    print("Roadmap ID:", roadmap_id)
+    logger.info(f"User {current_user.id} fetching roadmap: {roadmap_id}")
+
     roadmap = (
         db.query(Roadmap)
         .filter(Roadmap.id == roadmap_id, Roadmap.user_id == current_user.id)
         .first()
     )
+
     if not roadmap:
-        print("HIT HERE! 2")
+        logger.warning(f"Roadmap {roadmap_id} not found for user {current_user.id}")
         raise HTTPException(status_code=404, detail="Roadmap not found")
+
+    logger.debug(
+        f"Roadmap {roadmap_id} retrieved successfully with {len(roadmap.nodes)} nodes"
+    )
+
     return RoadmapResponseSchema(
         id=roadmap.id,
         roadmap_name=roadmap.roadmap_name,
@@ -112,15 +137,25 @@ async def delete_roadmap(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
+    logger.info(f"User {current_user.id} attempting to delete roadmap: {roadmap_id}")
+
     roadmap = (
         db.query(Roadmap)
         .filter(Roadmap.id == roadmap_id, Roadmap.user_id == current_user.id)
         .first()
     )
+
     if not roadmap:
+        logger.warning(
+            f"Delete failed: Roadmap {roadmap_id} not found for user {current_user.id}"
+        )
         raise HTTPException(status_code=404, detail="Roadmap not found")
+
     db.delete(roadmap)
     db.commit()
+
+    logger.info(f"Roadmap {roadmap_id} deleted successfully by user {current_user.id}")
+
     return {"detail": "Roadmap deleted successfully"}
 
 
@@ -138,6 +173,9 @@ async def update_roadmap_status(
         .first()
     )
     if not roadmap:
+        logger.warning(
+            f"Status update failed: Roadmap {roadmap_id} not found for user {current_user.id}"
+        )
         raise HTTPException(status_code=404, detail="Roadmap not found")
 
     roadmap.status = status
@@ -161,6 +199,9 @@ async def update_roadmap_node(
         .first()
     )
     if not roadmap:
+        logger.warning(
+            f"Node update failed: Roadmap {roadmap_id} not found for user {current_user.id}"
+        )
         raise HTTPException(status_code=404, detail="Roadmap not found")
 
     node = next((n for n in roadmap.nodes if n.node_id == roadmap_node_id), None)
@@ -204,6 +245,7 @@ async def update_roadmap(
     )
     if not roadmap:
         raise HTTPException(status_code=404, detail="Roadmap not found")
+
     node = (
         db.query(RoadmapNode)
         .filter(

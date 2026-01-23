@@ -318,28 +318,6 @@ class StatusUpdateSchema(BaseModel):
     status: StatusEnum
 
 
-# ----------------------
-# Clarification schemas
-# ----------------------
-class ClarificationAnswerBlockSchema(BaseSchema):
-    text: str
-    code: Union[str, List[str], None] = None
-    code_language: Language | None = None  # maps to code_language in DB
-    output: Union[str, List[str], None] = None
-
-    model_config = {
-        "from_attributes": True,
-        "populate_by_name": True,
-        "alias_generator": lambda field: {"codeLanguage": "code_language"}.get(
-            field, field
-        ),
-    }
-
-
-class ClarificationBlockSchema(BaseSchema):
-    question: str
-    answers: List[ClarificationAnswerBlockSchema] = Field(default_factory=list)
-
 
 class SegmentText(BaseModel):
     type: Literal["text"]
@@ -438,12 +416,6 @@ class GenerateModuleRequest(BaseModel):
     module: ModuleSchema
 
 
-class ClarifyLessonRequest(BaseModel):
-    question: str
-    content_block_id: str
-    content: str
-
-
 class GenerateQuizRequest(BaseModel):
     lesson_name: str
     content: list[str]
@@ -498,3 +470,16 @@ class RoadmapNodeUpdateRequest(BaseModel):
     description: str | None = None
     type: str | None = None
     status: StatusEnum | None = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ResetPasswordResponse(BaseModel):
+    message: str

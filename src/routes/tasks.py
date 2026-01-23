@@ -80,7 +80,6 @@ def task_status(type: str, task_id: str, db: Session = Depends(deps.get_db)):
 
     if type == "chat_stream":
         key = f"chat_result:{task_id}"
-        print("Checking Redis key:", key)
         reply = redis_client.get(key)
 
         if reply is None:

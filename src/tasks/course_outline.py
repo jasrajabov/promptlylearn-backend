@@ -38,36 +38,42 @@ def generate_course_outline_task(
             f"\n\n**CUSTOM REQUIREMENTS:**\n{custom_prompt}" if custom_prompt else ""
         )
 
-        prompt = f"""Create a comprehensive course outline as an expert curriculum designer.
-        **TOPIC:** {topic}
-        **LEVEL:** {level.capitalize()}{custom_section}
+        prompt = f"""
+                You are an expert curriculum designer.
 
-        **REQUIREMENTS:**
-        • Design complete learning path covering all essential skills
-        • Structure with logical progression (foundational → advanced)
-        • Include 5-12 modules with 3-8 lessons each
-        • Align difficulty with {level} level
-        • {level.capitalize()} means: {"no prior knowledge assumed, focus on fundamentals" if level == "beginner" else "build on foundations, practical applications" if level == "intermediate" else "sophisticated concepts, best practices, real-world scenarios"}
+                **TOPIC:** {topic}
+                **LEVEL:** {level.capitalize()}{custom_section}
 
-        **OUTPUT:** Valid JSON only (no markdown/code blocks):
+                **INSTRUCTIONS:**
+                1. STRICTLY DO NOT GENERATE COURSES ON ILLEGAL, HARMFUL, UNSAFE, OR UNETHICAL TOPICS.
+                2. If the topic is illegal/harmful, respond ONLY with:
+                {{
+                    "error": "Topic not allowed"
+                }}
+                3. Design a complete, professional course for the given topic and level.
+                4. Follow a logical progression (foundational → advanced).
+                5. Include 5-12 modules, each with 3-8 lessons.
+                6. Align difficulty with {level} level:
+                - Beginner: no prior knowledge assumed, focus on fundamentals.
+                - Intermediate: build on foundations, practical applications.
+                - Advanced: sophisticated concepts, best practices, real-world scenarios.
+                7. Ensure clear titles, logical flow, and comprehensive coverage.
 
-        {{
-        "title": "Specific course title",
-        "description": "2-3 sentences: what students learn and achieve",
-        "modules": [
-            {{
-            "title": "Module title",
-            "lessons": [
-                {{"title": "Specific lesson topic"}},
-                {{"title": "Specific lesson topic"}}
-            ]
-            }}
-        ]
-        }}
-
-        Ensure: clear titles, logical flow, comprehensive {level}-level coverage."""
-
-        print("Generating course outline with prompt:", prompt)
+                **OUTPUT:** Valid JSON ONLY (no markdown, no code blocks):
+                {{
+                    "title": "Specific course title",
+                    "description": "2-3 sentences: what students learn and achieve",
+                    "modules": [
+                        {{
+                            "title": "Module title",
+                            "lessons": [
+                                {{"title": "Specific lesson topic"}},
+                                {{"title": "Specific lesson topic"}}
+                            ]
+                        }}
+                    ]
+                }}
+                """
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -90,4 +96,4 @@ def generate_course_outline_task(
 
     except Exception:
         traceback.print_exc()
-        raise  # Let Celery handle retry if enabled
+        raise

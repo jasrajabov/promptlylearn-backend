@@ -1,16 +1,3 @@
-"""
-Script to create an admin user for the AI Course Generator
-Usage:
-  # Recommended (secure):
-  python create_admin.py
-
-  # With email only (prompts for password):
-  python create_admin.py --email admin@example.com
-
-  # Full CLI (NOT RECOMMENDED - password in history):
-  python create_admin.py --email admin@example.com --password SecurePass123
-"""
-
 import sys
 import os
 from getpass import getpass
@@ -27,12 +14,7 @@ from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("admin_creation.log"), logging.StreamHandler()],
-)
+logger = logging.getLogger(__name__)
 
 
 def hash_password(password: str) -> str:

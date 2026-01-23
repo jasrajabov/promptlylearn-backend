@@ -8,6 +8,9 @@ from src.utils.email_service import send_account_deletion_email
 from fastapi import BackgroundTasks
 import stripe
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -80,7 +83,7 @@ async def delete_own_account(
             for subscription in subscriptions.data:
                 stripe.Subscription.cancel(subscription.id)
                 subscription_cancelled = True
-                print(
+                logger.info(
                     f"Cancelled subscription {subscription.id} for customer {current_user.stripe_customer_id}"
                 )
 
@@ -88,7 +91,7 @@ async def delete_own_account(
             # stripe.Customer.delete(current_user.stripe_customer_id)
 
         except stripe.error.StripeError as e:
-            print(f"Error cancelling Stripe subscription: {str(e)}")
+            logger.error(f"Error cancelling Stripe subscription: {str(e)}")
             # Log the error but don't block account deletion
             # You might want to handle this differently based on your business logic
 

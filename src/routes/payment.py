@@ -15,16 +15,12 @@ from src.utils.email_service import (
 )
 from fastapi import BackgroundTasks
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 router = APIRouter(prefix="/payment", tags=["payment"])
 
-PRICE_ID = "price_1Shl43LBs0XeqslSCEv5hxHW"  # your Stripe price ID
-
-# 🔥 Define subscription-compatible payment methods
 SUBSCRIPTION_PAYMENT_METHODS = ["card"]
 
 
@@ -40,8 +36,8 @@ async def create_subscription(
     """
     try:
         # Get price_id from request body (optional, defaults to monthly)
-        body = await request.json()
-        price_id = body.get("price_id", PRICE_ID)  # Use default if not provided
+        body: dict = await request.json()
+        price_id: str = body.get("price_id")  # Use default if not provided
 
         # Ensure customer exists
         if not user.stripe_customer_id:
@@ -58,21 +54,16 @@ async def create_subscription(
             db.refresh(user)
             logger.info(f"Created Stripe customer for user: {user.email}")
 
-        # 🔥 NEW API: Use confirmation_secret instead of payment_intent
         # Create subscription with ONLY subscription-compatible payment methods
         subscription = stripe.Subscription.create(
             customer=user.stripe_customer_id,
             items=[{"price": price_id}],  # Use dynamic price_id
             payment_behavior="default_incomplete",
-            expand=[
-                "latest_invoice.confirmation_secret"
-            ],  # 🔥 Use new confirmation_secret
-            # 🔥 Limit to subscription-compatible methods
+            expand=["latest_invoice.confirmation_secret"],
             payment_settings={
                 "payment_method_types": SUBSCRIPTION_PAYMENT_METHODS,
                 "save_default_payment_method": "on_subscription",
             },
-            # Additional useful settings
             metadata={
                 "user_id": str(user.id),
                 "user_email": user.email,
@@ -85,8 +76,6 @@ async def create_subscription(
         logger.info(
             f"Created subscription {subscription.id} for user: {user.email} with price: {price_id}"
         )
-
-        # 🔥 NEW: Get client secret from confirmation_secret (new Stripe API)
         invoice = subscription.latest_invoice
 
         if not invoice:
