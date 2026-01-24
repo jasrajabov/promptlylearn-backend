@@ -54,13 +54,6 @@ services:
       - ./scripts:/app/scripts:ro
     networks:
       - app-network
-    # ADD THESE LINES FOR SMTP FIX
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-      - 1.1.1.1
-    dns_search: .
-    # END OF SMTP FIX
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -96,13 +89,6 @@ services:
       - ./scripts:/app/scripts:ro
     networks:
       - app-network
-    # ADD THESE LINES FOR SMTP FIX (if worker sends emails)
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-      - 1.1.1.1
-    dns_search: .
-    # END OF SMTP FIX
     restart: unless-stopped
     command: >
       celery -A celery_app.celery_app
