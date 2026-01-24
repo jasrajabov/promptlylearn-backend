@@ -39,17 +39,19 @@ class PasswordResetToken(Base):
     Password reset token model.
     Stores tokens for password reset functionality.
     """
+
     __tablename__ = "password_reset_tokens"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token = Column(String, unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow())
-    
+
     # Relationship
     user = relationship("User", back_populates="reset_tokens")
+
 
 # --- Enhanced User Model ---
 class User(Base):
@@ -59,7 +61,9 @@ class User(Base):
     name = Column(String, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
-    reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+    reset_tokens = relationship(
+        "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
+    )
     personal_info = Column(JSON, nullable=True)
 
     oauth_provider = Column(String, nullable=True)  # 'google', 'github', etc.

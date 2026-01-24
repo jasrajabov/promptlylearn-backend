@@ -17,12 +17,17 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
 
 
-
 @celery_app.task(
     name="src.tasks.lesson_stream.generate_lesson_markdown_stream_task", bind=True
 )
 def generate_lesson_markdown_stream_task(
-    self, model: str, lesson_id: str, module_id: str, course_id: str, stream_id: str, custom_prompt: str | None = None
+    self,
+    model: str,
+    lesson_id: str,
+    module_id: str,
+    course_id: str,
+    stream_id: str,
+    custom_prompt: str | None = None,
 ):
     """Background Celery task that streams lesson markdown tokens to Redis."""
     db = SessionLocal()

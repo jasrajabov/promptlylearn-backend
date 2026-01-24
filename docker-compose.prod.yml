@@ -35,9 +35,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # Optional: Expose port only if you need external access
-    # ports:
-    #   - "5432:5432"
 
   api:
     build:
@@ -54,9 +51,16 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./scripts:/app/scripts:ro # Mount scripts folder as read-only
+      - ./scripts:/app/scripts:ro
     networks:
       - app-network
+    # ADD THESE LINES FOR SMTP FIX
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    dns_search: .
+    # END OF SMTP FIX
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -89,9 +93,16 @@ services:
     env_file:
       - .env
     volumes:
-      - ./scripts:/app/scripts:ro # Mount scripts folder as read-only
+      - ./scripts:/app/scripts:ro
     networks:
       - app-network
+    # ADD THESE LINES FOR SMTP FIX (if worker sends emails)
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    dns_search: .
+    # END OF SMTP FIX
     restart: unless-stopped
     command: >
       celery -A celery_app.celery_app
@@ -99,46 +110,6 @@ services:
       --loglevel=INFO
       --concurrency=2
       --max-tasks-per-child=1000
-
-  # Optional: Celery Beat for scheduled tasks
-  # beat:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: promptlylearn_beat
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #     db:
-  #       condition: service_healthy
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./scripts:/app/scripts:ro  # Mount scripts folder
-  #   networks:
-  #     - app-network
-  #   restart: unless-stopped
-  #   command: celery -A celery_app.celery_app beat --loglevel=INFO
-
-  # Optional: Flower for Celery monitoring
-  # flower:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: promptlylearn_flower
-  #   depends_on:
-  #     - redis
-  #     - worker
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "5555:5555"
-  #   volumes:
-  #     - ./scripts:/app/scripts:ro  # Mount scripts folder
-  #   networks:
-  #     - app-network
-  #   restart: unless-stopped
-  #   command: celery -A celery_app.celery_app flower --port=5555
 
 volumes:
   postgres_data:

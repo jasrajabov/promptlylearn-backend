@@ -1,12 +1,9 @@
-import aiosmtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
 import os
 from dotenv import load_dotenv
 import logging
 from pathlib import Path
 from datetime import datetime
+import httpx
 
 load_dotenv()
 
@@ -18,7 +15,7 @@ LOGO_PATH = STATIC_DIR / "logo.svg"
 WELCOME_TEMPLATE_PATH = STATIC_DIR / "welcome_email.html"
 DELETION_TEMPLATE_PATH = STATIC_DIR / "account_deletion_email.html"
 SUBSCRIPTION_RECEIPT_TEMPLATE_PATH = STATIC_DIR / "subscription_receipt_email.html"
-FORGOT_PASSWORD_TEMPLATE_PATH = STATIC_DIR /  "forgot_password_email.html"
+FORGOT_PASSWORD_TEMPLATE_PATH = STATIC_DIR / "forgot_password_email.html"
 SUBSCRIPTION_CANCELLATION_TEMPLATE_PATH = (
     STATIC_DIR / "subscription_cancellation_email.html"
 )
@@ -50,26 +47,44 @@ def load_email_template(template_path: Path, **kwargs) -> str:
 
 
 async def send_email_with_logo(to_email: str, subject: str, html_content: str):
-    """Utility func to send email with logo"""
+    """Send email via Zoho ZeptoMail API"""
+
+    url = "https://api.zeptomail.com/v1.1/email"
+    print("Token: ", os.getenv("ZEPTOMAIL_TOKEN"))
+
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "authorization": os.getenv("ZEPTOMAIL_TOKEN"),
+    }
+
+    payload = {
+        "from": {"address": "noreply@promptlylearn.app"},
+        "to": [
+            {
+                "email_address": {
+                    "address": to_email,
+                    "name": to_email.split("@")[0],  # Use email prefix as name
+                }
+            }
+        ],
+        "subject": subject,
+        "htmlbody": html_content,
+    }
+
     try:
-        message = MIMEMultipart("related")
-        message["From"] = f"PromptlyLearn <{os.getenv('ZOHO_EMAIL')}>"
-        message["To"] = to_email
-        message["Subject"] = subject
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload, headers=headers)
 
-        message.attach(MIMEText(html_content, "html"))
+            if 200 <= response.status_code < 300:
+                logger.info(f"Email sent to {to_email} via ZeptoMail")
+                return True
+            else:
+                logger.error(f"ZeptoMail error {response.status_code}: {response.text}")
+                return False
 
-        await aiosmtplib.send(
-            message,
-            hostname=os.getenv("ZOHO_SMTP_HOST"),
-            port=int(os.getenv("ZOHO_SMTP_PORT")),
-            username=os.getenv("ZOHO_EMAIL"),
-            password=os.getenv("ZOHO_PASSWORD"),
-            start_tls=True,
-        )
-        return True
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}. {e} ")
+        logger.error(f"Failed to send email to {to_email}: {e}")
         return False
 
 
@@ -239,10 +254,12 @@ async def send_subscription_cancellation_email(
     return await send_email_with_logo(to_email, subject, html_content)
 
 
-async def send_password_reset_email(email: str, reset_token: str, user_name: str = None):
+async def send_password_reset_email(
+    email: str, reset_token: str, user_name: str = None
+):
     """
     Send password reset email using HTML template from static folder.
-    
+
     Args:
         email: User's email address
         reset_token: The reset token
@@ -251,26 +268,22 @@ async def send_password_reset_email(email: str, reset_token: str, user_name: str
     # Get frontend URL from environment
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
     reset_link = f"{frontend_url}/reset-password?token={reset_token}"
-    
+
     # Load HTML template from static folder
     try:
         html_template = load_email_template(
-            FORGOT_PASSWORD_TEMPLATE_PATH,
-            user_name = user_name, 
-            reset_link=reset_link
-                                            
-                                            )
+            FORGOT_PASSWORD_TEMPLATE_PATH, user_name=user_name, reset_link=reset_link
+        )
     except FileNotFoundError as e:
         logger.error(f"Failed to load email template: {e}")
         raise
-    
-    
+
     # Send email using your existing function
     result = await send_email_with_logo(
         to_email=email,
         subject="Reset Your Password - NO REPLY",
-        html_content=html_template
+        html_content=html_template,
     )
-    
+
     logger.info(f"Password reset email sent to {email}: {result}")
     return result

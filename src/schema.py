@@ -4,7 +4,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import List, Literal, Union
 
 from src.models import MembershipStatus
-from .enums import Language
 
 
 # ----------------------
@@ -316,7 +315,6 @@ class StatusEnum(str, Enum):
 
 class StatusUpdateSchema(BaseModel):
     status: StatusEnum
-
 
 
 class SegmentText(BaseModel):

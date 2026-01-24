@@ -404,7 +404,8 @@ async def github_callback(
         logger.error(f"GitHub OAuth error: {str(e)}")
         error_url = f"{frontend_url}/login?error=Authentication failed"
         return RedirectResponse(url=error_url)
-    
+
+
 @router.post("/forgot-password")
 async def forgot_password(
     request: schema.ForgotPasswordRequest,
@@ -416,49 +417,48 @@ async def forgot_password(
     Returns success even if email doesn't exist (security best practice).
     """
     logger.info(f"Password reset requested for email: {request.email}")
-    
+
     # Find user by email
     user = db.query(models.User).filter(models.User.email == request.email).first()
-    
+
     if not user:
-        logger.warning(f"Password reset requested for non-existent email: {request.email}")
+        logger.warning(
+            f"Password reset requested for non-existent email: {request.email}"
+        )
         # Return success anyway to prevent email enumeration
         return {"message": "If that email exists, a password reset link has been sent"}
-    
+
     # Generate secure random token
     reset_token = secrets.token_urlsafe(32)
-    
+
     # Create reset token in database
     token_expires = datetime.utcnow() + timedelta(hours=1)  # Token valid for 1 hour
-    
+
     # Delete any existing unused tokens for this user
     db.query(models.PasswordResetToken).filter(
         models.PasswordResetToken.user_id == user.id,
-        models.PasswordResetToken.used == False
+        models.PasswordResetToken.used == False,
     ).delete()
-    
+
     # Create new token
     db_token = models.PasswordResetToken(
-        user_id=user.id,
-        token=reset_token,
-        expires_at=token_expires,
-        used=False
+        user_id=user.id, token=reset_token, expires_at=token_expires, used=False
     )
     db.add(db_token)
     db.commit()
-    
+
     logger.info(f"Password reset token created for user: {user.id}")
-    
+
     # Send email in background
     background_tasks.add_task(
         send_password_reset_email,
         email=user.email,
         reset_token=reset_token,
-        user_name=user.name
+        user_name=user.name,
     )
-    
+
     logger.info(f"Password reset email queued for: {user.email}")
-    
+
     return {"message": "If that email exists, a password reset link has been sent"}
 
 
@@ -471,46 +471,54 @@ async def reset_password(
     Reset password using the token from email.
     """
     logger.info("Password reset attempt with token")
-    
+
     # Validate token
-    db_token = db.query(models.PasswordResetToken).filter(
-        models.PasswordResetToken.token == request.token
-    ).first()
-    
+    db_token = (
+        db.query(models.PasswordResetToken)
+        .filter(models.PasswordResetToken.token == request.token)
+        .first()
+    )
+
     if not db_token:
         logger.warning("Invalid password reset token used")
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
-    
+
     # Check if token is expired
     if db_token.expires_at < datetime.utcnow():
-        logger.warning(f"Expired password reset token used for user: {db_token.user_id}")
+        logger.warning(
+            f"Expired password reset token used for user: {db_token.user_id}"
+        )
         raise HTTPException(status_code=400, detail="Reset token has expired")
-    
+
     # Check if token was already used
     if db_token.used:
-        logger.warning(f"Already-used password reset token attempted for user: {db_token.user_id}")
+        logger.warning(
+            f"Already-used password reset token attempted for user: {db_token.user_id}"
+        )
         raise HTTPException(status_code=400, detail="Reset token has already been used")
-    
+
     # Get user
     user = db.query(models.User).filter(models.User.id == db_token.user_id).first()
     if not user:
         logger.error(f"User not found for valid reset token: {db_token.user_id}")
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Validate new password
     if len(request.new_password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-    
+        raise HTTPException(
+            status_code=400, detail="Password must be at least 8 characters"
+        )
+
     # Update password
     user.hashed_password = hash_password(request.new_password)
-    
+
     # Mark token as used
     db_token.used = True
-    
+
     db.commit()
-    
+
     logger.info(f"Password successfully reset for user: {user.id}")
-    
+
     return {"message": "Password has been reset successfully"}
 
 
@@ -522,21 +530,22 @@ async def verify_reset_token(
     """
     Verify if a reset token is valid (for frontend to check before showing reset form).
     """
-    logger.debug(f"Verifying reset token")
-    
-    db_token = db.query(models.PasswordResetToken).filter(
-        models.PasswordResetToken.token == token,
-        models.PasswordResetToken.used == False,
-        models.PasswordResetToken.expires_at > datetime.utcnow()
-    ).first()
-    
+    logger.debug("Verifying reset token")
+
+    db_token = (
+        db.query(models.PasswordResetToken)
+        .filter(
+            models.PasswordResetToken.token == token,
+            models.PasswordResetToken.used == False,
+            models.PasswordResetToken.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
+
     if not db_token:
         logger.warning("Invalid or expired token verification attempt")
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
-    
+
     user = db.query(models.User).filter(models.User.id == db_token.user_id).first()
-    
-    return {
-        "valid": True,
-        "email": user.email if user else None
-    }
+
+    return {"valid": True, "email": user.email if user else None}
