@@ -44,8 +44,7 @@ logger.info(f"Configuring CORS for frontend: {frontend_url}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        frontend_url,
-        "http://localhost:5173",
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
