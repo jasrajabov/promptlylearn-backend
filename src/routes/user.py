@@ -5,6 +5,7 @@ from src import schema
 from src.deps import get_current_user, get_db
 from src.models import AdminAuditLog, User, UserRole
 from src.utils.email_service import send_account_deletion_email
+from src.utils.credit_helper import ensure_credits_are_valid
 from fastapi import BackgroundTasks
 import stripe
 import os
@@ -17,7 +18,8 @@ router = APIRouter(prefix="/user", tags=["user"])
 
 
 @router.get("/me", response_model=schema.UserDetailResponse)
-def get_me(user: User = Depends(get_current_user)):
+def get_me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ensure_credits_are_valid(user, db)
     return user
 
 

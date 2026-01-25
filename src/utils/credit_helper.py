@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from src.models import MembershipStatus, User
 from src.exceptions import NotEnoughCreditsException
 
-FREE_WEEKLY_CREDITS = 100
+DAILY_WEEKLY_CREDITS = 100
 
 
 def ensure_credits_are_valid(user: User, db: Session):
@@ -16,14 +16,14 @@ def ensure_credits_are_valid(user: User, db: Session):
     now = datetime.utcnow()
 
     if not user.credits_reset_at:
-        user.credits = FREE_WEEKLY_CREDITS
-        user.credits_reset_at = now + timedelta(days=7)
+        user.credits = DAILY_WEEKLY_CREDITS
+        user.credits_reset_at = now + timedelta(days=1)
         db.commit()
         return
 
     if now >= user.credits_reset_at:
-        user.credits = FREE_WEEKLY_CREDITS
-        user.credits_reset_at = now + timedelta(days=7)
+        user.credits = DAILY_WEEKLY_CREDITS
+        user.credits_reset_at = now + timedelta(days=1)
         db.commit()
 
 
