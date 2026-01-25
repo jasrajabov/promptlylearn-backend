@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 import logging
@@ -34,14 +35,25 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS Middleware
+
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+logger.info(f"Configuring CORS for frontend: {frontend_url}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        frontend_url,
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["Set-Cookie"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
+logger.info("CORS middleware configured with specific origins (NOT wildcard)")
 
 # Session Middleware for OAuth
 app.add_middleware(
@@ -49,7 +61,7 @@ app.add_middleware(
     secret_key=os.getenv("SECRET_KEY"),
     max_age=3600,
     same_site="lax",
-    https_only=False,
+    https_only=False,  # Set to True in production with HTTPS
 )
 logger.info("Session middleware configured")
 
@@ -116,7 +128,7 @@ async def health_check():
     return {"status": "healthy"}
 
 
-# Optional: Add global exception handler
+# Enhanced global exception handler with proper status codes
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch all unhandled exceptions."""
@@ -124,14 +136,28 @@ async def global_exception_handler(request: Request, exc: Exception):
     error_logger.exception(
         f"Unhandled exception on {request.method} {request.url.path}: {str(exc)}"
     )
-    return {
-        "detail": "Internal server error",
-        "path": request.url.path,
-    }
+
+    # Return proper JSON response with 500 status code
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "path": request.url.path,
+        },
+    )
 
 
 if __name__ == "__main__":
     import uvicorn
 
     logger.info("Starting FastAPI application via main...")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_config=None)
+    logger.info(f"Frontend URL: {frontend_url}")
+    logger.info(f"Backend URL: {backend_url}")
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_config=None,
+        reload=True,
+    )

@@ -95,40 +95,64 @@ def create_session_and_tokens(user_id: str, response: Response):
 async def get_or_create_oauth_user(
     email: str, name: str, oauth_provider: str, oauth_provider_id: str, db: Session
 ):
-    """Get existing user or create new one from OAuth"""
-    # Check if user exists
-    db_user = db.query(models.User).filter(models.User.email == email).first()
-
-    if db_user:
-        # User exists, update OAuth info if not set
-        if not db_user.oauth_provider:
-            db_user.oauth_provider = oauth_provider
-            db_user.oauth_provider_id = oauth_provider_id
-            db.commit()
-            db.refresh(db_user)
-        return db_user
-
-    # Create new user with OAuth
-    new_user = models.User(
-        email=email,
-        name=name,
-        hashed_password=None,  # OAuth users don't have password
-        oauth_provider=oauth_provider,
-        oauth_provider_id=oauth_provider_id,
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    # Send welcome email
+    """Get existing user or create new one from OAuth - with better error handling"""
     try:
-        email_result = await send_welcome_email(email, name)
-        if not email_result["success"]:
-            logger.warning(f"Failed to send welcome email: {email_result['message']}")
-    except Exception as e:
-        logger.warning(f"Failed to send welcome email: {str(e)}")
+        # Check if user exists
+        db_user = db.query(models.User).filter(models.User.email == email).first()
 
-    return new_user
+        if db_user:
+            # Better handling of existing users with different OAuth providers
+            if db_user.oauth_provider and db_user.oauth_provider != oauth_provider:
+                logger.warning(
+                    f"User {email} exists with {db_user.oauth_provider} but logging in with {oauth_provider}"
+                )
+                # Allow it but log the discrepancy
+
+            # Update OAuth info if not set or changed
+            if (
+                not db_user.oauth_provider
+                or db_user.oauth_provider_id != oauth_provider_id
+            ):
+                db_user.oauth_provider = oauth_provider
+                db_user.oauth_provider_id = oauth_provider_id
+                db.commit()
+                db.refresh(db_user)
+
+            logger.info(f"Existing user {email} logging in via {oauth_provider}")
+            return db_user
+
+        # Create new user with OAuth
+        logger.info(f"Creating new user {email} via {oauth_provider}")
+
+        new_user = models.User(
+            email=email,
+            name=name,
+            hashed_password=None,  # OAuth users don't have password
+            oauth_provider=oauth_provider,
+            oauth_provider_id=oauth_provider_id,
+            is_email_verified=True,  # FIX: OAuth emails are pre-verified
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        # Send welcome email (don't let this fail the login)
+        try:
+            email_result = await send_welcome_email(email, name)
+            if not email_result.get("success"):
+                logger.warning(
+                    f"Welcome email failed for {email}: {email_result.get('message')}"
+                )
+        except Exception as e:
+            logger.warning(f"Welcome email exception for {email}: {str(e)}")
+
+        logger.info(f"Successfully created new user {email}")
+        return new_user
+
+    except Exception as e:
+        logger.error(f"Error in get_or_create_oauth_user: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to create or update user")
 
 
 # ==================== EXISTING AUTH ROUTES ====================
@@ -293,13 +317,27 @@ async def google_callback(
         user_info = token.get("userinfo")
 
         if not user_info:
-            raise HTTPException(
-                status_code=400, detail="Failed to get user info from Google"
+            logger.error("Google OAuth: No userinfo in token response")
+            error_url = (
+                f"{frontend_url}/login?error=Failed to get user information from Google"
             )
+            return RedirectResponse(url=error_url)
 
-        email = user_info["email"]
+        email = user_info.get("email")
+        if not email:
+            logger.error("Google OAuth: No email in userinfo")
+            error_url = f"{frontend_url}/login?error=Email not provided by Google"
+            return RedirectResponse(url=error_url)
+
         name = user_info.get("name", email.split("@")[0])
-        provider_id = user_info["sub"]
+        provider_id = user_info.get("sub")
+
+        if not provider_id:
+            logger.error("Google OAuth: No sub (user ID) in userinfo")
+            error_url = f"{frontend_url}/login?error=Invalid response from Google"
+            return RedirectResponse(url=error_url)
+
+        logger.info(f"Google OAuth: User {email} attempting login")
 
         # Get or create user
         db_user = await get_or_create_oauth_user(
@@ -310,21 +348,38 @@ async def google_callback(
             db=db,
         )
 
+        # FIX: Update login tracking (matching regular login behavior)
+        db_user.last_login_at = datetime.utcnow()
+        db_user.login_count = (db_user.login_count or 0) + 1
+
         # Ensure credits are valid
         ensure_credits_are_valid(db_user, db)
+
+        # IMPORTANT: Commit the changes before creating tokens
+        db.commit()
+        db.refresh(db_user)
 
         # Create session and tokens
         access_token, refresh_token = create_session_and_tokens(
             str(db_user.id), response
         )
 
+        logger.info(f"Google OAuth: Successfully authenticated user {email}")
+
         # Redirect to frontend with access token in URL
         redirect_url = f"{frontend_url}/login?token={access_token}"
         return RedirectResponse(url=redirect_url)
 
+    except HTTPException as he:
+        # Re-raise HTTP exceptions with specific error
+        logger.error(f"Google OAuth HTTPException: {he.detail}")
+        error_url = f"{frontend_url}/login?error={he.detail}"
+        return RedirectResponse(url=error_url)
     except Exception as e:
-        logger.error(f"Google OAuth error: {str(e)}")
-        error_url = f"{frontend_url}/login?error=Authentication failed"
+        logger.error(f"Google OAuth error: {str(e)}", exc_info=True)
+        # More specific error message
+        error_message = "Authentication failed. Please try again."
+        error_url = f"{frontend_url}/login?error={error_message}"
         return RedirectResponse(url=error_url)
 
 
@@ -344,65 +399,126 @@ async def github_callback(
         # Get access token from GitHub
         token = await oauth.github.authorize_access_token(request)
 
-        # Get user info from GitHub API
-        async with httpx.AsyncClient() as client:
-            headers = {"Authorization": f"token {token['access_token']}"}
+        if not token or not token.get("access_token"):
+            logger.error("GitHub OAuth: No access token received")
+            error_url = f"{frontend_url}/login?error=Failed to authenticate with GitHub"
+            return RedirectResponse(url=error_url)
 
-            # Get user profile
-            user_response = await client.get(
-                "https://api.github.com/user", headers=headers
-            )
-            user_data = user_response.json()
+        # Better error handling with httpx
+        try:
+            async with httpx.AsyncClient() as client:
+                headers = {"Authorization": f"token {token['access_token']}"}
 
-            # Get user email
-            email = user_data.get("email")
-            if not email:
-                # Email might be private, fetch from emails endpoint
-                email_response = await client.get(
-                    "https://api.github.com/user/emails", headers=headers
-                )
-                emails = email_response.json()
-                # Get primary email
-                primary_email = next(
-                    (e for e in emails if e["primary"] and e["verified"]), None
-                )
-                if not primary_email:
-                    primary_email = next((e for e in emails if e["verified"]), None)
-
-                email = primary_email["email"] if primary_email else None
-
-            if not email:
-                raise HTTPException(
-                    status_code=400, detail="No verified email found in GitHub account"
+                # Get user profile
+                user_response = await client.get(
+                    "https://api.github.com/user", headers=headers
                 )
 
-            name = user_data.get("name") or user_data.get("login")
-            provider_id = str(user_data["id"])
+                if user_response.status_code != 200:
+                    logger.error(f"GitHub API error: {user_response.status_code}")
+                    error_url = (
+                        f"{frontend_url}/login?error=Failed to fetch GitHub profile"
+                    )
+                    return RedirectResponse(url=error_url)
 
-            # Get or create user
-            db_user = await get_or_create_oauth_user(
-                email=email,
-                name=name,
-                oauth_provider="github",
-                oauth_provider_id=provider_id,
-                db=db,
-            )
+                user_data = user_response.json()
 
-            # Ensure credits are valid
-            ensure_credits_are_valid(db_user, db)
+                # Get user email
+                email = user_data.get("email")
+                if not email:
+                    # Email might be private, fetch from emails endpoint
+                    email_response = await client.get(
+                        "https://api.github.com/user/emails", headers=headers
+                    )
 
-            # Create session and tokens
-            access_token, refresh_token = create_session_and_tokens(
-                str(db_user.id), response
-            )
+                    if email_response.status_code != 200:
+                        logger.error(
+                            f"GitHub emails API error: {email_response.status_code}"
+                        )
+                        error_url = (
+                            f"{frontend_url}/login?error=Failed to fetch GitHub email"
+                        )
+                        return RedirectResponse(url=error_url)
 
-            # Redirect to frontend with access token in URL
-            redirect_url = f"{frontend_url}/login?token={access_token}"
-            return RedirectResponse(url=redirect_url)
+                    emails = email_response.json()
 
+                    # Get primary verified email
+                    primary_email = next(
+                        (e for e in emails if e.get("primary") and e.get("verified")),
+                        None,
+                    )
+                    if not primary_email:
+                        primary_email = next(
+                            (e for e in emails if e.get("verified")), None
+                        )
+
+                    email = primary_email.get("email") if primary_email else None
+
+                if not email:
+                    logger.error("GitHub OAuth: No verified email found")
+                    error_url = f"{frontend_url}/login?error=No verified email found in GitHub account"
+                    return RedirectResponse(url=error_url)
+
+                name = (
+                    user_data.get("name")
+                    or user_data.get("login")
+                    or email.split("@")[0]
+                )
+                provider_id = str(user_data.get("id"))
+
+                if not provider_id:
+                    logger.error("GitHub OAuth: No user ID in response")
+                    error_url = (
+                        f"{frontend_url}/login?error=Invalid response from GitHub"
+                    )
+                    return RedirectResponse(url=error_url)
+
+        except httpx.RequestError as e:
+            logger.error(f"GitHub API request error: {str(e)}")
+            error_url = f"{frontend_url}/login?error=Network error connecting to GitHub"
+            return RedirectResponse(url=error_url)
+
+        logger.info(f"GitHub OAuth: User {email} attempting login")
+
+        # Get or create user
+        db_user = await get_or_create_oauth_user(
+            email=email,
+            name=name,
+            oauth_provider="github",
+            oauth_provider_id=provider_id,
+            db=db,
+        )
+
+        # FIX: Update login tracking (matching regular login behavior)
+        db_user.last_login_at = datetime.utcnow()
+        db_user.login_count = (db_user.login_count or 0) + 1
+
+        # Ensure credits are valid
+        ensure_credits_are_valid(db_user, db)
+
+        # IMPORTANT: Commit the changes before creating tokens
+        db.commit()
+        db.refresh(db_user)
+
+        # Create session and tokens
+        access_token, refresh_token = create_session_and_tokens(
+            str(db_user.id), response
+        )
+
+        logger.info(f"GitHub OAuth: Successfully authenticated user {email}")
+
+        # Redirect to frontend with access token in URL
+        redirect_url = f"{frontend_url}/login?token={access_token}"
+        return RedirectResponse(url=redirect_url)
+
+    except HTTPException as he:
+        logger.error(f"GitHub OAuth HTTPException: {he.detail}")
+        error_url = f"{frontend_url}/login?error={he.detail}"
+        return RedirectResponse(url=error_url)
     except Exception as e:
-        logger.error(f"GitHub OAuth error: {str(e)}")
-        error_url = f"{frontend_url}/login?error=Authentication failed"
+        logger.error(f"GitHub OAuth error: {str(e)}", exc_info=True)
+        error_message = "Authentication failed. Please try again."
+        error_url = f"{frontend_url}/login?error={error_message}"
         return RedirectResponse(url=error_url)
 
 
@@ -437,7 +553,7 @@ async def forgot_password(
     # Delete any existing unused tokens for this user
     db.query(models.PasswordResetToken).filter(
         models.PasswordResetToken.user_id == user.id,
-        models.PasswordResetToken.used == False,
+        models.PasswordResetToken.used.is_(False),
     ).delete()
 
     # Create new token
@@ -536,7 +652,7 @@ async def verify_reset_token(
         db.query(models.PasswordResetToken)
         .filter(
             models.PasswordResetToken.token == token,
-            models.PasswordResetToken.used == False,
+            models.PasswordResetToken.used.is_(False),
             models.PasswordResetToken.expires_at > datetime.utcnow(),
         )
         .first()

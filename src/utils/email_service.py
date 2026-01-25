@@ -50,12 +50,15 @@ async def send_email_with_logo(to_email: str, subject: str, html_content: str):
     """Send email via Zoho ZeptoMail API"""
 
     url = "https://api.zeptomail.com/v1.1/email"
-    print("Token: ", os.getenv("ZEPTOMAIL_TOKEN"))
+    zeptomail_token: str = os.getenv("ZEPTOMAIL_TOKEN", "")
+    if not zeptomail_token:
+        logger.error("Zeptomail token is not found in env var. Email will be skipped.")
+        return
 
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "authorization": os.getenv("ZEPTOMAIL_TOKEN"),
+        "authorization": zeptomail_token,
     }
 
     payload = {
