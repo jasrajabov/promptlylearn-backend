@@ -60,8 +60,8 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY"),
     max_age=3600,
-    same_site="lax",
-    https_only=False,  # Set to True in production with HTTPS
+    same_site="none",
+    https_only=True,
 )
 logger.info("Session middleware configured")
 
