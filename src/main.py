@@ -49,7 +49,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
-    # expose_headers=["Set-Cookie"],
+    expose_headers=["Set-Cookie"],
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 logger.info("CORS middleware configured with specific origins (NOT wildcard)")
