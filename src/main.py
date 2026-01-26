@@ -44,7 +44,9 @@ logger.info(f"Configuring CORS for frontend: {frontend_url}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*"
+        "http://localhost:5173",
+        "https://www.promptlylearn.app",
+        "https://promptlylearn.app",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
