@@ -21,7 +21,7 @@ def ensure_credits_are_valid(user: User, db: Session):
         db.commit()
         return
 
-    if now >= user.credits_reset_at:
+    if now >= user.credits_reset_at and user.credits < DAILY_WEEKLY_CREDITS:
         user.credits = DAILY_WEEKLY_CREDITS
         user.credits_reset_at = now + timedelta(days=1)
         db.commit()
