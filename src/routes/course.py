@@ -331,35 +331,6 @@ def delete_course(
     return {"detail": "Course deleted successfully"}
 
 
-@router.delete("/lessons/{lesson_id}")
-def delete_lesson(
-    lesson_id: str,
-    db: Session = Depends(deps.get_db),
-    user: User = Depends(deps.get_current_user),
-):
-    lesson = (
-        db.query(models.Lesson)
-        .join(models.Module)
-        .join(models.Course)
-        .filter(models.Lesson.id == lesson_id, models.Course.user_id == user.id)
-        .first()
-    )
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    # delete only content blocks belonging to the lesson
-    deleted_count = (
-        db.query(models.ContentBlock)
-        .filter(models.ContentBlock.lesson_id == lesson_id)
-        .delete(synchronize_session=False)
-    )
-    db.commit()
-
-    # refresh lesson to reflect emptied relationship if needed
-    db.refresh(lesson)
-    return {"detail": "Content blocks deleted", "deleted_count": deleted_count}
-
-
 @router.post("/generate-lesson-stream")
 async def generate_lesson_markdown_stream(
     request: Request, db: Session = Depends(deps.get_db)
@@ -397,7 +368,7 @@ async def generate_lesson_markdown_stream(
     channel = f"lesson_stream:{stream_id}"
 
     # Launch background task
-    model = "gpt-5-mini" if user.membership_plan == "premium" else "gpt-4o-mini"
+    model = "gpt-5-mini"
     logger.info(f"User {user.id} is premium, using gpt-4.1-mini for lesson generation")
     generate_lesson_markdown_stream_task.delay(
         model, lesson_id, module_id, course_id, stream_id, custom_prompt

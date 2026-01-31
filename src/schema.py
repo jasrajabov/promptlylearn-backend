@@ -128,7 +128,7 @@ class UserDetailResponse(BaseModel):
     membership_status: MembershipStatus
     membership_active_until: datetime | None
     stripe_customer_id: str | None
-
+    personal_info: dict | None
     # Credits
     credits: int
     credits_reset_at: datetime | None

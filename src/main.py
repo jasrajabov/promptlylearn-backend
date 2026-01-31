@@ -59,7 +59,7 @@ logger.info("CORS middleware configured with specific origins (NOT wildcard)")
 # Session Middleware for OAuth
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SECRET_KEY"),
+    secret_key=os.getenv("SECRET_KEY", ""),
     max_age=3600,
     same_site="none",
     https_only=True,
