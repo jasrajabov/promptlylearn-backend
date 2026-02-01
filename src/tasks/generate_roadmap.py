@@ -27,6 +27,7 @@ def generate_roadmap_outline(
     Generate a structured learning roadmap for a career or skill path.
     Supports optional branching paths (e.g., Frontend vs Backend).
     """
+    model = "gpt-5-mini"
     custom_section = (
         f"\n**CUSTOM REQUIREMENTS:** {custom_prompt}" if custom_prompt else ""
     )
@@ -82,7 +83,7 @@ def generate_roadmap_outline(
 ✓ All edges properly connected"""
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
     )

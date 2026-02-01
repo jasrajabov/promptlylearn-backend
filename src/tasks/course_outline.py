@@ -27,8 +27,7 @@ def generate_course_outline_task(
     topic: str,
     level: str,
     user_id: str,
-    roadmap_id: str | None = None,
-    roadmap_node_id: str | None = None,
+    roadmap_name: str | None,
     course_id: str | None = None,
     custom_prompt: str | None = None,
 ) -> CourseSchema:
@@ -43,6 +42,7 @@ def generate_course_outline_task(
 
                 **TOPIC:** {topic}
                 **LEVEL:** {level.capitalize()}{custom_section}
+                **ROADMAP** {roadmap_name}
 
                 **INSTRUCTIONS:**
                 1. STRICTLY DO NOT GENERATE COURSES ON ILLEGAL, HARMFUL, UNSAFE, OR UNETHICAL TOPICS.
@@ -50,7 +50,8 @@ def generate_course_outline_task(
                 {{
                     "error": "Topic not allowed"
                 }}
-                3. Design a complete, professional course for the given topic and level.
+                3. Design a complete, professional course for the given topic and level. 
+                - If roadmap name present, the course is part of it and must within that scope.
                 4. Follow a logical progression (foundational → advanced).
                 5. Include 5-12 modules, each with 3-8 lessons.
                 6. Align difficulty with {level} level:

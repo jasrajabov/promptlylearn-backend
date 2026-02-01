@@ -405,6 +405,7 @@ class GenerateCourseRequest(BaseModel):
     level: str
     roadmap_node_id: str | None = None
     roadmap_id: str | None = None
+    roadmap_name: str | None
     custom_prompt: str | None = None
 
 

@@ -45,6 +45,7 @@ def generate_course_outline(
     roadmap_node_id = payload.roadmap_node_id
     roadmap_id = payload.roadmap_id
     custom_prompt = payload.custom_prompt
+    roadmap_name = payload.roadmap_name
 
     # 1. Create empty course entry
     course_id = str(uuid.uuid4())
@@ -68,7 +69,7 @@ def generate_course_outline(
         topic=topic,
         level=level,
         user_id=user.id,
-        roadmap_node_id=roadmap_node_id,
+        roadmap_name=roadmap_name,
         course_id=course_id,
         custom_prompt=custom_prompt,
     )
