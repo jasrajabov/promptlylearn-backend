@@ -85,7 +85,6 @@ def generate_roadmap_outline(
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
     )
 
     raw_output = response.choices[0].message.content.strip()
